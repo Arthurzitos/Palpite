@@ -58,8 +58,8 @@ ENV NODE_ENV=production
 ENV PORT=3001
 
 # Create non-root user for security
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nestjs
+RUN addgroup -S -g 1001 nodejs && \
+    adduser -S -u 1001 -G nodejs nestjs
 
 # Copy only production dependencies
 COPY package.json package-lock.json ./
