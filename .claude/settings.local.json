@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:preview--sight-shot.lovable.app)",
+      "WebFetch(domain:lovable.dev)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run test:e2e:*)",
+      "Bash(npx jest:*)",
+      "Bash(dir:*)",
+      "Bash(npm test)",
+      "Bash(npm run test:*)",
+      "WebFetch(domain:documenter.getpostman.com)",
+      "WebFetch(domain:nowpayments.io)",
+      "Bash(npm test:*)",
+      "Bash(timeout 10 npm run start:dev)",
+      "Bash(npm run:*)",
+      "Bash(openssl rand:*)",
+      "Bash(npm ci:*)"
+    ]
+  }
+}

@@ -1,0 +1,195 @@
+# =============================================================================
+# Docker Compose - Prediction Market (Production)
+# Full stack deployment with API, Web, MongoDB, and Redis
+# =============================================================================
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Required environment variables (create .env.prod file):
+#   - MONGODB_URI (or use internal mongodb service)
+#   - REDIS_URL (or use internal redis service)
+#   - JWT_SECRET, JWT_REFRESH_SECRET
+#   - CCPAYMENT_*, NOWPAYMENTS_* credentials
+#   - API_URL, FRONTEND_URL
+#
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # API - NestJS Backend
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: pm-api
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      # Database (use external for production, or internal service)
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongodb:27017/prediction-market}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      # Auth
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      # URLs
+      API_URL: ${API_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
+      # CCPayment
+      CCPAYMENT_APP_ID: ${CCPAYMENT_APP_ID}
+      CCPAYMENT_APP_SECRET: ${CCPAYMENT_APP_SECRET}
+      CCPAYMENT_WEBHOOK_URL: ${CCPAYMENT_WEBHOOK_URL}
+      # NOWPayments
+      NOWPAYMENTS_API_KEY: ${NOWPAYMENTS_API_KEY}
+      NOWPAYMENTS_IPN_SECRET: ${NOWPAYMENTS_IPN_SECRET}
+      NOWPAYMENTS_WEBHOOK_URL: ${NOWPAYMENTS_WEBHOOK_URL}
+      NOWPAYMENTS_PAYOUT_ADDRESS: ${NOWPAYMENTS_PAYOUT_ADDRESS}
+      NOWPAYMENTS_PAYOUT_CURRENCY: ${NOWPAYMENTS_PAYOUT_CURRENCY:-usdttrc20}
+      NOWPAYMENTS_EMAIL: ${NOWPAYMENTS_EMAIL}
+      NOWPAYMENTS_PASSWORD: ${NOWPAYMENTS_PASSWORD}
+      # Platform
+      PLATFORM_FEE_PERCENT: ${PLATFORM_FEE_PERCENT:-3}
+      MIN_BET_AMOUNT: ${MIN_BET_AMOUNT:-1}
+      MAX_BET_AMOUNT: ${MAX_BET_AMOUNT:-10000}
+      MIN_DEPOSIT_AMOUNT: ${MIN_DEPOSIT_AMOUNT:-5}
+      MIN_WITHDRAWAL_AMOUNT: ${MIN_WITHDRAWAL_AMOUNT:-10}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - pm-network
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:3001/api/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ---------------------------------------------------------------------------
+  # Web - Next.js Frontend
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-PredictionMarket}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+    container_name: pm-web
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - pm-network
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  # ---------------------------------------------------------------------------
+  # MongoDB - Primary Database (for self-hosted deployments)
+  # For production, consider using MongoDB Atlas instead
+  # ---------------------------------------------------------------------------
+  mongodb:
+    image: mongo:7
+    container_name: pm-mongodb
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    environment:
+      MONGO_INITDB_DATABASE: prediction-market
+    networks:
+      - pm-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/prediction-market --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+
+  # ---------------------------------------------------------------------------
+  # Redis - Cache and Rate Limiting
+  # For production, consider using Upstash or Redis Cloud
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: pm-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    networks:
+      - pm-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+networks:
+  pm-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  redis_data:
+    driver: local
