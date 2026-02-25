@@ -15,8 +15,8 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
   const logger = app.get(LoggerService);
-  const port = configService.get<number>('PORT', 3001);
-  const frontendUrl = configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
+  const port = configService.get<number>('port', 3001);
+  const frontendUrl = process.env.FRONTEND_URL || configService.get<string>('frontendUrl') || 'http://localhost:3000';
 
   // Use custom logger
   app.useLogger(logger);
@@ -28,13 +28,32 @@ async function bootstrap() {
   app.use(helmet());
   app.use(compression());
 
-  // CORS
+  // CORS - support multiple origins for flexibility
+  const allowedOrigins = [
+    frontendUrl,
+    'http://localhost:3000',
+    'https://palpite.me',
+    'https://www.palpite.me',
+  ].filter(Boolean);
+
   app.enableCors({
-    origin: frontendUrl,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        logger.warn(`CORS blocked origin: ${origin}`, 'CORS');
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'timestamp', 'sign', 'x-nowpayments-sig'],
   });
+
+  logger.log(`CORS configured for origins: ${allowedOrigins.join(', ')}`, 'Bootstrap');
 
   // Global validation pipe
   app.useGlobalPipes(
