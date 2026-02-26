@@ -11,15 +11,9 @@ import {
 } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../common/guards';
-import { CurrentUser, Public } from '../../common/decorators';
+import { CurrentUser, CurrentUserPayload, Public } from '../../common/decorators';
 import { WalletService } from './wallet.service';
 import { DepositCryptoDto, DepositFiatDto, WithdrawDto } from './dto';
-
-interface JwtPayload {
-  sub: string;
-  email: string;
-  role: string;
-}
 
 @Controller('wallet')
 @UseGuards(JwtAuthGuard)
@@ -27,33 +21,33 @@ export class WalletController {
   constructor(private readonly walletService: WalletService) {}
 
   @Get('balance')
-  async getBalance(@CurrentUser() user: JwtPayload) {
-    return this.walletService.getBalance(user.sub);
+  async getBalance(@CurrentUser() user: CurrentUserPayload) {
+    return this.walletService.getBalance(user.userId);
   }
 
   @Post('deposit/crypto')
   async depositCrypto(
-    @CurrentUser() user: JwtPayload,
+    @CurrentUser() user: CurrentUserPayload,
     @Body() dto: DepositCryptoDto,
   ) {
-    return this.walletService.depositCrypto(user.sub, dto.amount);
+    return this.walletService.depositCrypto(user.userId, dto.amount);
   }
 
   @Post('deposit/fiat')
   async depositFiat(
-    @CurrentUser() user: JwtPayload,
+    @CurrentUser() user: CurrentUserPayload,
     @Body() dto: DepositFiatDto,
   ) {
-    return this.walletService.depositFiat(user.sub, dto.amount);
+    return this.walletService.depositFiat(user.userId, dto.amount);
   }
 
   @Post('withdraw')
   async withdraw(
-    @CurrentUser() user: JwtPayload,
+    @CurrentUser() user: CurrentUserPayload,
     @Body() dto: WithdrawDto,
   ) {
     return this.walletService.withdraw(
-      user.sub,
+      user.userId,
       dto.amount,
       dto.address,
       dto.network,
@@ -62,12 +56,12 @@ export class WalletController {
 
   @Get('transactions')
   async getTransactions(
-    @CurrentUser() user: JwtPayload,
+    @CurrentUser() user: CurrentUserPayload,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     return this.walletService.getTransactionHistory(
-      user.sub,
+      user.userId,
       page ? parseInt(page, 10) : 1,
       limit ? parseInt(limit, 10) : 20,
     );
