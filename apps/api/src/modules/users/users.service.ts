@@ -20,15 +20,10 @@ export class UsersService {
   async create(input: CreateUserInput): Promise<UserDocument> {
     const { email, password, username, role = UserRole.USER, balance = 0 } = input;
 
-    const existingUser = await this.userModel.findOne({
-      $or: [{ email: email.toLowerCase() }, { username }],
-    });
+    const existingUser = await this.userModel.findOne({ email: email.toLowerCase() });
 
     if (existingUser) {
-      if (existingUser.email === email.toLowerCase()) {
-        throw new ConflictException('Email already registered');
-      }
-      throw new ConflictException('Username already taken');
+      throw new ConflictException('Email already registered');
     }
 
     const passwordHash = await bcrypt.hash(password, 10);

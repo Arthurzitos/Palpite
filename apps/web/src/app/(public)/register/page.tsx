@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface RegisterForm {
-  username: string;
+  name: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -39,7 +39,7 @@ export default function RegisterPage() {
     clearError();
 
     try {
-      await registerUser(data.email, data.password, data.username);
+      await registerUser(data.email, data.password, data.name);
       router.push('/markets');
     } catch {
       setFormError(error || 'Erro ao criar conta');
@@ -98,33 +98,29 @@ export default function RegisterPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="username">Nome de usuário</Label>
+              <Label htmlFor="name">Nome</Label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  id="username"
+                  id="name"
                   type="text"
-                  placeholder="ex: arthur_123"
+                  placeholder="Seu nome completo"
                   className="h-12 pl-10 bg-secondary border-0"
-                  {...register('username', {
-                    required: 'Nome de usuário é obrigatório',
+                  {...register('name', {
+                    required: 'Nome é obrigatório',
                     minLength: {
-                      value: 3,
-                      message: 'Mínimo de 3 caracteres',
+                      value: 2,
+                      message: 'Mínimo de 2 caracteres',
                     },
                     maxLength: {
-                      value: 30,
-                      message: 'Máximo de 30 caracteres',
-                    },
-                    pattern: {
-                      value: /^[a-zA-Z0-9_]+$/,
-                      message: 'Apenas letras, números e underscore (_)',
+                      value: 100,
+                      message: 'Máximo de 100 caracteres',
                     },
                   })}
                 />
               </div>
-              {errors.username && (
-                <p className="text-sm text-destructive">{errors.username.message}</p>
+              {errors.name && (
+                <p className="text-sm text-destructive">{errors.name.message}</p>
               )}
             </div>
 

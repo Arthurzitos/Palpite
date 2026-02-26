@@ -13,10 +13,7 @@ export class RegisterDto {
   password: string;
 
   @IsString()
-  @MinLength(3, { message: 'Username must be at least 3 characters' })
-  @MaxLength(30)
-  @Matches(/^[a-zA-Z0-9_]+$/, {
-    message: 'Username can only contain letters, numbers, and underscores',
-  })
-  username: string;
+  @MinLength(2, { message: 'Name must be at least 2 characters' })
+  @MaxLength(100)
+  name: string;
 }
