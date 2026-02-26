@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface RegisterForm {
-  name: string;
+  username: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -39,7 +39,7 @@ export default function RegisterPage() {
     clearError();
 
     try {
-      await registerUser(data.email, data.password, data.name);
+      await registerUser(data.email, data.password, data.username);
       router.push('/markets');
     } catch {
       setFormError(error || 'Erro ao criar conta');
@@ -98,25 +98,33 @@ export default function RegisterPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="name">Nome</Label>
+              <Label htmlFor="username">Nome de usuário</Label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  id="name"
+                  id="username"
                   type="text"
-                  placeholder="Seu nome completo"
+                  placeholder="ex: arthur_123"
                   className="h-12 pl-10 bg-secondary border-0"
-                  {...register('name', {
-                    required: 'Nome é obrigatório',
+                  {...register('username', {
+                    required: 'Nome de usuário é obrigatório',
                     minLength: {
-                      value: 2,
-                      message: 'Mínimo de 2 caracteres',
+                      value: 3,
+                      message: 'Mínimo de 3 caracteres',
+                    },
+                    maxLength: {
+                      value: 30,
+                      message: 'Máximo de 30 caracteres',
+                    },
+                    pattern: {
+                      value: /^[a-zA-Z0-9_]+$/,
+                      message: 'Apenas letras, números e underscore (_)',
                     },
                   })}
                 />
               </div>
-              {errors.name && (
-                <p className="text-sm text-destructive">{errors.name.message}</p>
+              {errors.username && (
+                <p className="text-sm text-destructive">{errors.username.message}</p>
               )}
             </div>
 
@@ -150,13 +158,17 @@ export default function RegisterPage() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Mínimo 8 caracteres"
                   className="h-12 pl-10 pr-10 bg-secondary border-0"
                   {...register('password', {
                     required: 'Senha é obrigatória',
                     minLength: {
-                      value: 6,
-                      message: 'Mínimo de 6 caracteres',
+                      value: 8,
+                      message: 'Mínimo de 8 caracteres',
+                    },
+                    pattern: {
+                      value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+                      message: 'Deve conter maiúscula, minúscula e número',
                     },
                   })}
                 />
