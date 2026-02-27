@@ -1,17 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   History,
   ArrowDownToLine,
   ArrowUpFromLine,
   Trophy,
   XCircle,
-  Filter,
   Calendar,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { walletApi, Transaction } from '@/lib/api';
 
 type FilterType = 'all' | 'bets' | 'deposits' | 'withdrawals' | 'payouts';
 
@@ -26,91 +27,55 @@ interface HistoryItem {
   outcome?: 'won' | 'lost';
 }
 
-const mockHistory: HistoryItem[] = [
-  {
-    id: '1',
-    type: 'bet',
-    title: 'Aposta em "Lula reeleito 2026?"',
-    description: 'SIM @ 55¢ • 100 shares',
-    amount: -55,
-    date: '2026-02-16 10:30',
-    status: 'completed',
-  },
-  {
-    id: '2',
-    type: 'payout',
-    title: 'Pagamento de "ETH Merge 2.0"',
-    description: 'NÃO venceu • 100 shares @ 100¢',
-    amount: 100,
-    date: '2026-02-15 18:45',
-    status: 'completed',
-    outcome: 'won',
-  },
-  {
-    id: '3',
-    type: 'deposit',
-    title: 'Depósito via PIX',
-    description: 'Chave: pix@prediction.com',
-    amount: 500,
-    date: '2026-02-15 14:30',
-    status: 'completed',
-  },
-  {
-    id: '4',
-    type: 'bet',
-    title: 'Aposta em "BTC > $150K"',
-    description: 'SIM @ 38¢ • 200 shares',
-    amount: -76,
-    date: '2026-02-14 16:20',
-    status: 'completed',
-  },
-  {
-    id: '5',
-    type: 'withdrawal',
-    title: 'Saque via USDT',
-    description: 'TRx7NZc...Kj8pQ',
-    amount: -200,
-    date: '2026-02-14 10:15',
-    status: 'pending',
-  },
-  {
-    id: '6',
-    type: 'bet',
-    title: 'Aposta em "Copa 2026 Brasil"',
-    description: 'SIM @ 28¢ • 150 shares',
-    amount: -42,
-    date: '2026-02-13 20:00',
-    status: 'completed',
-  },
-  {
-    id: '7',
-    type: 'deposit',
-    title: 'Depósito via BTC',
-    description: '0.015 BTC',
-    amount: 1000,
-    date: '2026-02-13 18:45',
-    status: 'completed',
-  },
-  {
-    id: '8',
-    type: 'payout',
-    title: 'Pagamento de "Oscar 2026 Brasil"',
-    description: 'SIM perdeu • 50 shares',
-    amount: 0,
-    date: '2026-02-12 09:20',
-    status: 'completed',
-    outcome: 'lost',
-  },
-  {
-    id: '9',
-    type: 'refund',
-    title: 'Reembolso - Evento Cancelado',
-    description: '"Eleição Venezuela 2026"',
-    amount: 35,
-    date: '2026-02-11 15:00',
-    status: 'completed',
-  },
-];
+function transformTransaction(transaction: Transaction): HistoryItem {
+  const typeLabels: Record<string, string> = {
+    deposit: 'Depósito',
+    withdrawal: 'Saque',
+    bet: 'Aposta',
+    payout: 'Pagamento',
+    refund: 'Reembolso',
+    fee: 'Taxa',
+  };
+
+  let title = typeLabels[transaction.type] || transaction.type;
+  let description = '';
+
+  if (transaction.type === 'deposit') {
+    title = 'Depósito';
+    description = transaction.reference || 'Depósito realizado';
+  } else if (transaction.type === 'withdrawal') {
+    title = 'Saque';
+    description = transaction.reference || 'Saque solicitado';
+  } else if (transaction.type === 'bet') {
+    title = 'Aposta realizada';
+    description = transaction.reference || 'Aposta em evento';
+  } else if (transaction.type === 'payout') {
+    title = 'Pagamento recebido';
+    description = transaction.reference || 'Aposta vencedora';
+  } else if (transaction.type === 'refund') {
+    title = 'Reembolso';
+    description = transaction.reference || 'Evento cancelado';
+  }
+
+  return {
+    id: transaction._id,
+    type: transaction.type as HistoryItem['type'],
+    title,
+    description,
+    amount: transaction.type === 'withdrawal' || transaction.type === 'bet'
+      ? -Math.abs(transaction.amount)
+      : transaction.amount,
+    date: new Date(transaction.createdAt).toLocaleString('pt-BR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).replace(',', ''),
+    status: transaction.status,
+    outcome: transaction.type === 'payout' ? 'won' : undefined,
+  };
+}
 
 const filterOptions = [
   { id: 'all', label: 'Todos', icon: History },
@@ -160,8 +125,30 @@ function getTypeColor(type: HistoryItem['type'], outcome?: 'won' | 'lost') {
 
 export default function HistoryPage() {
   const [filter, setFilter] = useState<FilterType>('all');
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredHistory = mockHistory.filter((item) => {
+  useEffect(() => {
+    const fetchHistory = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await walletApi.getTransactions(1, 100);
+        const transformedHistory = data.transactions.map(transformTransaction);
+        setHistory(transformedHistory);
+      } catch (err) {
+        setError('Erro ao carregar histórico');
+        console.error('Error fetching history:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchHistory();
+  }, []);
+
+  const filteredHistory = history.filter((item) => {
     if (filter === 'all') return true;
     if (filter === 'bets') return item.type === 'bet';
     if (filter === 'deposits') return item.type === 'deposit';
@@ -179,6 +166,22 @@ export default function HistoryPage() {
     groups[date].push(item);
     return groups;
   }, {} as Record<string, HistoryItem[]>);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p className="text-destructive">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -217,7 +220,7 @@ export default function HistoryPage() {
           <div key={date}>
             <div className="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
               <Calendar className="h-4 w-4" />
-              {new Date(date).toLocaleDateString('pt-BR', {
+              {new Date(date.split('/').reverse().join('-')).toLocaleDateString('pt-BR', {
                 weekday: 'long',
                 day: 'numeric',
                 month: 'long',

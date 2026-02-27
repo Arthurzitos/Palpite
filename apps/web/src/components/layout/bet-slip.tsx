@@ -1,33 +1,54 @@
 'use client';
 
-import { useState } from 'react';
-import { X, ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, ChevronDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
-
-interface BetSlipItem {
-  id: string;
-  eventTitle: string;
-  outcome: 'yes' | 'no';
-  odds: number;
-}
+import { betsApi, Bet, Event } from '@/lib/api';
+import { BetSlipItem } from '@/hooks/use-bet-slip';
 
 interface BetSlipProps {
   items?: BetSlipItem[];
   onRemoveItem?: (id: string) => void;
   onConfirm?: (amount: number) => void;
+  isPlacingBet?: boolean;
+  error?: string | null;
+  onClearError?: () => void;
 }
 
 const quickAmounts = [10, 50, 100, 500];
 
-const recentBets = [
-  { id: '1', title: 'BTC > $150K @ 42¢', status: 'ABERTO' },
-  { id: '2', title: 'Copa 2026 Brasil @ 28¢', status: 'GANHOU' },
-];
-
-export function BetSlip({ items = [], onRemoveItem, onConfirm }: BetSlipProps) {
+export function BetSlip({ items = [], onRemoveItem, onConfirm, isPlacingBet, error, onClearError }: BetSlipProps) {
   const [amount, setAmount] = useState<string>('100');
+  const [recentBets, setRecentBets] = useState<{ id: string; title: string; status: string }[]>([]);
+  const [isLoadingRecent, setIsLoadingRecent] = useState(true);
+
+  useEffect(() => {
+    const fetchRecentBets = async () => {
+      try {
+        const data = await betsApi.getMyBets({ limit: 5 });
+        const formatted = data.bets.map((bet) => {
+          const event = bet.eventId as Event;
+          const eventTitle = typeof event === 'object' ? event.title : 'Evento';
+          const odds = Math.round(bet.oddsAtPurchase * 100);
+          return {
+            id: bet._id,
+            title: `${eventTitle.substring(0, 20)}... @ ${odds}¢`,
+            status: bet.status === 'pending' ? 'ABERTO' : bet.status === 'won' ? 'GANHOU' : 'PERDEU',
+          };
+        });
+        setRecentBets(formatted);
+      } catch {
+        // Silently fail for recent bets
+      } finally {
+        setIsLoadingRecent(false);
+      }
+    };
+
+    fetchRecentBets();
+  }, [items]); // Refresh when items change (after placing a bet)
 
   const numericAmount = parseFloat(amount.replace(',', '.')) || 0;
   const selectedItem = items[0];
@@ -149,11 +170,29 @@ export function BetSlip({ items = [], onRemoveItem, onConfirm }: BetSlipProps) {
                   R$ {potentialReturn.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </span>
               </div>
+              {error && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertDescription className="flex items-center justify-between">
+                    {error}
+                    <button onClick={onClearError} className="text-xs underline">
+                      Fechar
+                    </button>
+                  </AlertDescription>
+                </Alert>
+              )}
               <Button
                 className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-base"
                 onClick={() => onConfirm?.(numericAmount)}
+                disabled={isPlacingBet || numericAmount <= 0}
               >
-                CONFIRMAR PALPITE
+                {isPlacingBet ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    PROCESSANDO...
+                  </>
+                ) : (
+                  'CONFIRMAR PALPITE'
+                )}
               </Button>
             </>
           )}
@@ -165,24 +204,36 @@ export function BetSlip({ items = [], onRemoveItem, onConfirm }: BetSlipProps) {
               <ChevronDown className="h-4 w-4" />
             </button>
             <div className="mt-3 space-y-2">
-              {recentBets.map((bet) => (
-                <div
-                  key={bet.id}
-                  className="flex items-center justify-between text-sm"
-                >
-                  <span className="text-muted-foreground">{bet.title}</span>
-                  <span
-                    className={cn(
-                      'rounded px-2 py-0.5 text-xs font-bold',
-                      bet.status === 'ABERTO'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-primary/20 text-primary'
-                    )}
-                  >
-                    {bet.status}
-                  </span>
+              {isLoadingRecent ? (
+                <div className="flex justify-center py-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
-              ))}
+              ) : recentBets.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-2">
+                  Nenhum palpite recente
+                </p>
+              ) : (
+                recentBets.map((bet) => (
+                  <div
+                    key={bet.id}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <span className="text-muted-foreground">{bet.title}</span>
+                    <span
+                      className={cn(
+                        'rounded px-2 py-0.5 text-xs font-bold',
+                        bet.status === 'ABERTO'
+                          ? 'bg-primary text-primary-foreground'
+                          : bet.status === 'GANHOU'
+                          ? 'bg-primary/20 text-primary'
+                          : 'bg-destructive/20 text-destructive'
+                      )}
+                    >
+                      {bet.status}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

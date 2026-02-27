@@ -1,29 +1,20 @@
 'use client';
 
-import { useState } from 'react';
 import { Sidebar, Header, TickerBar, BetSlip } from '@/components/layout';
-
-interface BetSlipItem {
-  id: string;
-  eventTitle: string;
-  outcome: 'yes' | 'no';
-  odds: number;
-}
+import { useBetSlip } from '@/hooks/use-bet-slip';
 
 export default function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [betSlipItems, setBetSlipItems] = useState<BetSlipItem[]>([]);
+  const { items, removeItem, placeBet, isPlacingBet, error, clearError } = useBetSlip();
 
-  const handleRemoveItem = (id: string) => {
-    setBetSlipItems((items) => items.filter((item) => item.id !== id));
-  };
-
-  const handleConfirmBet = (amount: number) => {
-    console.log('Confirming bet:', { items: betSlipItems, amount });
-    // TODO: Implement bet confirmation logic
+  const handleConfirmBet = async (amount: number) => {
+    const success = await placeBet(amount);
+    if (success) {
+      // Optionally show success notification
+    }
   };
 
   return (
@@ -46,9 +37,12 @@ export default function AppLayout({
       </div>
 
       <BetSlip
-        items={betSlipItems}
-        onRemoveItem={handleRemoveItem}
+        items={items}
+        onRemoveItem={removeItem}
         onConfirm={handleConfirmBet}
+        isPlacingBet={isPlacingBet}
+        error={error}
+        onClearError={clearError}
       />
     </div>
   );

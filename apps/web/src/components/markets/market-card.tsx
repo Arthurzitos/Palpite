@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { Heart, Share2 } from 'lucide-react';
+import { Heart, Share2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useFavorites } from '@/hooks/use-favorites';
 
 interface MarketOutcome {
   id: string;
@@ -47,6 +49,39 @@ export function MarketCard({
 }: MarketCardProps) {
   const [yesOutcome, noOutcome] = outcomes;
   const yesPercentage = (yesOutcome.odds / (yesOutcome.odds + noOutcome.odds)) * 100;
+  const { toggleFavorite, isFavorite } = useFavorites();
+  const [shareSuccess, setShareSuccess] = useState(false);
+  const isFav = isFavorite(id);
+
+  const handleFavorite = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFavorite(id);
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const shareUrl = `${window.location.origin}/markets/${id}`;
+    const shareData = {
+      title: title,
+      text: `Confira este palpite: ${title}`,
+      url: shareUrl,
+    };
+
+    try {
+      if (navigator.share && navigator.canShare(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareSuccess(true);
+        setTimeout(() => setShareSuccess(false), 2000);
+      }
+    } catch {
+      // User cancelled or error - ignore
+    }
+  };
 
   return (
     <div className="group rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/30">
@@ -69,11 +104,27 @@ export function MarketCard({
           )}
         </div>
         <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-            <Heart className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "h-8 w-8",
+              isFav ? "text-red-500 hover:text-red-600" : "text-muted-foreground hover:text-foreground"
+            )}
+            onClick={handleFavorite}
+          >
+            <Heart className={cn("h-4 w-4", isFav && "fill-current")} />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-            <Share2 className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "h-8 w-8",
+              shareSuccess ? "text-green-500" : "text-muted-foreground hover:text-foreground"
+            )}
+            onClick={handleShare}
+          >
+            {shareSuccess ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
           </Button>
         </div>
       </div>

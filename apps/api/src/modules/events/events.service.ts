@@ -81,14 +81,32 @@ export class EventsService {
       query.$text = { $search: filters.search };
     }
 
+    // Handle special filters
+    if (filters.filter === 'live') {
+      // Live events: already started but still open
+      query.status = EventStatus.OPEN;
+      query.startsAt = { $lte: new Date() };
+      query.closesAt = { $gt: new Date() };
+    }
+
     const page = filters.page || 1;
     const limit = filters.limit || 20;
     const skip = (page - 1) * limit;
 
+    // Determine sort order based on filter
+    let sort: Record<string, 1 | -1> = { closesAt: 1, createdAt: -1 };
+    if (filters.filter === 'trending' || filters.filter === 'popular') {
+      // Sort by volume (most active first)
+      sort = { totalPool: -1, closesAt: 1 };
+    } else if (filters.filter === 'new') {
+      // Sort by creation date (newest first)
+      sort = { createdAt: -1 };
+    }
+
     const [events, total] = await Promise.all([
       this.eventModel
         .find(query)
-        .sort({ closesAt: 1, createdAt: -1 })
+        .sort(sort)
         .skip(skip)
         .limit(limit)
         .exec(),

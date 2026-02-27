@@ -1,6 +1,8 @@
-import { IsEnum, IsOptional, IsString, IsInt, Min, Max } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsInt, Min, Max, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 import { EventCategory, EventStatus } from '@prediction-market/shared';
+
+export type SortFilter = 'live' | 'trending' | 'popular' | 'new';
 
 export class EventFiltersDto {
   @IsEnum(EventStatus)
@@ -14,6 +16,10 @@ export class EventFiltersDto {
   @IsString()
   @IsOptional()
   search?: string;
+
+  @IsIn(['live', 'trending', 'popular', 'new'])
+  @IsOptional()
+  filter?: SortFilter;
 
   @IsInt()
   @Min(1)

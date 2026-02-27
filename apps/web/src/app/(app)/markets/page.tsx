@@ -5,7 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import { MarketCard, StatsCards, CategoryTabs } from '@/components/markets';
 import { Button } from '@/components/ui/button';
 import { useEvents } from '@/hooks/use-events';
+import { useBetSlip } from '@/hooks/use-bet-slip';
 import { EventStatus } from '@prediction-market/shared';
+import { SortFilter } from '@/lib/api';
 
 function formatVolume(amount: number): string {
   if (amount >= 1000000) {
@@ -44,31 +46,64 @@ const categoryMap: Record<string, string> = {
 function MarketsContent() {
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get('category');
+  const filterParam = searchParams.get('filter') as SortFilter | null;
   const [activeCategory, setActiveCategory] = useState(categoryParam || 'all');
+  const [activeFilter, setActiveFilter] = useState<SortFilter | undefined>(filterParam || undefined);
   const [page, setPage] = useState(1);
+  const { addItem } = useBetSlip();
 
   const filters = useMemo(() => ({
-    status: EventStatus.OPEN,
+    status: activeFilter === 'live' ? undefined : EventStatus.OPEN,
     category: activeCategory !== 'all' ? activeCategory : undefined,
+    filter: activeFilter,
     page,
     limit: 20,
-  }), [activeCategory, page]);
+  }), [activeCategory, activeFilter, page]);
 
   const { events, isLoading, error, pagination, refetch } = useEvents(filters);
 
   useEffect(() => {
     if (categoryParam) {
       setActiveCategory(categoryParam);
+      setActiveFilter(undefined);
     }
   }, [categoryParam]);
 
   useEffect(() => {
+    if (filterParam) {
+      setActiveFilter(filterParam);
+      setActiveCategory('all');
+    }
+  }, [filterParam]);
+
+  useEffect(() => {
     setPage(1);
     refetch(filters);
-  }, [activeCategory]);
+  }, [activeCategory, activeFilter]);
 
   const handleSelectOutcome = (marketId: string, outcomeId: string, outcome: 'yes' | 'no') => {
-    console.log('Selected:', { marketId, outcomeId, outcome });
+    const event = events.find((e) => e._id === marketId);
+    if (!event) return;
+
+    const outcomeData = event.outcomes.find((o) => o._id === outcomeId);
+    if (!outcomeData) return;
+
+    const yesOutcome = event.outcomes[0];
+    const noOutcome = event.outcomes[1];
+    const totalOdds = (yesOutcome?.odds || 1) + (noOutcome?.odds || 1);
+    const odds = outcome === 'yes'
+      ? Math.round((yesOutcome?.odds || 1) * 100 / totalOdds)
+      : Math.round((noOutcome?.odds || 1) * 100 / totalOdds);
+
+    addItem({
+      id: `${marketId}-${outcomeId}`,
+      eventId: marketId,
+      outcomeId,
+      eventTitle: event.title,
+      outcome,
+      outcomeLabel: outcomeData.label,
+      odds,
+    });
   };
 
   const handleLoadMore = () => {
@@ -83,11 +118,17 @@ function MarketsContent() {
     const yesOdds = yesOutcome?.odds ? Math.round(yesOutcome.odds * 100 / (yesOutcome.odds + (noOutcome?.odds || 1))) : 50;
     const noOdds = 100 - yesOdds;
 
+    // Determine if event is "live" (started but not closed)
+    const now = new Date();
+    const startsAt = event.startsAt ? new Date(event.startsAt) : null;
+    const closesAt = new Date(event.closesAt);
+    const isLive = startsAt ? (startsAt <= now && closesAt > now) : false;
+
     return {
       id: event._id,
       title: event.title,
       category: categoryMap[event.category] || event.category,
-      isLive: false,
+      isLive,
       volume: formatVolume(event.totalPool),
       traders: '-',
       endsIn: formatTimeRemaining(event.closesAt),

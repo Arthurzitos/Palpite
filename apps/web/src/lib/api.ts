@@ -142,10 +142,13 @@ export interface PaginatedEvents {
   totalPages: number;
 }
 
+export type SortFilter = 'live' | 'trending' | 'popular' | 'new';
+
 export interface EventFilters {
   status?: string;
   category?: string;
   search?: string;
+  filter?: SortFilter;
   page?: number;
   limit?: number;
 }
@@ -156,6 +159,7 @@ export const eventsApi = {
     if (filters?.status) params.append('status', filters.status);
     if (filters?.category) params.append('category', filters.category);
     if (filters?.search) params.append('search', filters.search);
+    if (filters?.filter) params.append('filter', filters.filter);
     if (filters?.page) params.append('page', filters.page.toString());
     if (filters?.limit) params.append('limit', filters.limit.toString());
 
