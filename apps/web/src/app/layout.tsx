@@ -6,8 +6,11 @@ import { AuthProvider } from '@/components/providers/auth-provider';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Prediction Market',
+  title: 'Palpite Market',
   description: 'Mercado de previsoes onde voce aposta em eventos reais usando crypto',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
