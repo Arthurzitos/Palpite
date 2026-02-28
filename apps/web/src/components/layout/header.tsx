@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { Search, Bell, LogIn, Wallet, ChevronDown } from 'lucide-react';
+import { Search, Bell, LogIn, Wallet, ChevronDown, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/use-auth';
+import { UserRole } from '@prediction-market/shared';
 
 export function Header() {
   const { user, isAuthenticated } = useAuth();
@@ -39,6 +40,16 @@ export function Header() {
                 </span>
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </Link>
+
+              {/* Admin Link */}
+              {user?.role === UserRole.ADMIN && (
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/admin" className="flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    Admin
+                  </Link>
+                </Button>
+              )}
 
               {/* Notifications */}
               <Button variant="ghost" size="icon" className="relative">

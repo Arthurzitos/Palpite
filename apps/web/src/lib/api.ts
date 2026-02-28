@@ -326,6 +326,49 @@ export const walletApi = {
   },
 };
 
+// Admin Users API
+export interface AdminUser {
+  _id: string;
+  email: string;
+  username: string;
+  role: string;
+  balance: number;
+  totalDeposited: number;
+  totalWithdrawn: number;
+  totalWagered: number;
+  totalWon: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaginatedAdminUsers {
+  users: AdminUser[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface UserFilters {
+  role?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface UserStats {
+  totalUsers: number;
+  totalAdmins: number;
+  activeUsers: number;
+  newUsersThisMonth: number;
+}
+
+export interface AdjustBalanceData {
+  amount: number;
+  operation: 'add' | 'subtract';
+  reason?: string;
+}
+
 // Admin API
 export interface DashboardStats {
   totalEvents: number;
@@ -400,6 +443,45 @@ export const adminApi = {
 
   cancelEvent: async (id: string): Promise<Event> => {
     const response = await api.post(`/admin/events/${id}/cancel`);
+    return response.data;
+  },
+};
+
+// Admin Users API
+export const adminUsersApi = {
+  getAll: async (filters?: UserFilters): Promise<PaginatedAdminUsers> => {
+    const params = new URLSearchParams();
+    if (filters?.role) params.append('role', filters.role);
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    const response = await api.get(`/admin/users?${params.toString()}`);
+    return response.data;
+  },
+
+  getStats: async (): Promise<UserStats> => {
+    const response = await api.get('/admin/users/stats');
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<AdminUser> => {
+    const response = await api.get(`/admin/users/${id}`);
+    return response.data;
+  },
+
+  getBets: async (id: string, page = 1, limit = 20): Promise<PaginatedBets> => {
+    const response = await api.get(`/admin/users/${id}/bets?page=${page}&limit=${limit}`);
+    return response.data;
+  },
+
+  updateRole: async (id: string, role: string): Promise<AdminUser> => {
+    const response = await api.patch(`/admin/users/${id}`, { role });
+    return response.data;
+  },
+
+  adjustBalance: async (id: string, data: AdjustBalanceData): Promise<AdminUser> => {
+    const response = await api.post(`/admin/users/${id}/adjust-balance`, data);
     return response.data;
   },
 };
