@@ -78,7 +78,7 @@ function ResolveModal({
                     <span className="font-medium">{outcome.label}</span>
                   </div>
                   <span className="text-sm text-muted-foreground">
-                    ${outcome.totalPool.toLocaleString('en-US')} • {outcome.odds.toFixed(2)}x
+                    ${(outcome.totalPool ?? 0).toLocaleString('en-US')} • {(outcome.odds ?? 0).toFixed(2)}x
                   </span>
                 </button>
               ))}
@@ -159,7 +159,7 @@ function CancelModal({
 
           <div className="rounded-lg bg-secondary p-4">
             <p className="text-sm text-muted-foreground">Pool total a ser reembolsado:</p>
-            <p className="mt-1 text-2xl font-bold">${event.totalPool.toLocaleString('en-US')}</p>
+            <p className="mt-1 text-2xl font-bold">${(event.totalPool ?? 0).toLocaleString('en-US')}</p>
           </div>
 
           <div className="flex gap-3">
@@ -372,7 +372,7 @@ export default function AdminEventDetailPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Pool Total</p>
-              <p className="text-xl font-bold">${event.totalPool.toLocaleString('en-US')}</p>
+              <p className="text-xl font-bold">${(event.totalPool ?? 0).toLocaleString('en-US')}</p>
             </div>
           </div>
         </div>
@@ -427,9 +427,9 @@ export default function AdminEventDetailPage() {
                 )}
               </div>
               <div className="text-right">
-                <p className="font-semibold">{outcome.odds.toFixed(2)}x</p>
+                <p className="font-semibold">{(outcome.odds ?? 0).toFixed(2)}x</p>
                 <p className="text-sm text-muted-foreground">
-                  ${outcome.totalPool.toLocaleString('en-US')}
+                  ${(outcome.totalPool ?? 0).toLocaleString('en-US')}
                 </p>
               </div>
             </div>

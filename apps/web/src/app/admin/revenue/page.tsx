@@ -106,7 +106,7 @@ function WithdrawModal({
       <div className="w-full max-w-md rounded-2xl bg-card p-6">
         <h2 className="text-xl font-bold">Sacar Lucros</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Saldo disponível: ${availableBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          Saldo disponível: ${(availableBalance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -305,10 +305,10 @@ export default function AdminRevenuePage() {
                   </div>
                   <div className="text-right">
                     <p className="font-semibold text-green-500">
-                      +${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      +${(item.amount ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {item.count} evento{item.count !== 1 && 's'}
+                      {item.count ?? 0} evento{(item.count ?? 0) !== 1 && 's'}
                     </p>
                   </div>
                 </div>
@@ -337,15 +337,15 @@ export default function AdminRevenuePage() {
                   <div>
                     <p className="font-medium">{getEventTitle(record)}</p>
                     <p className="text-sm text-muted-foreground">
-                      Pool: ${record.poolTotal.toLocaleString('en-US')}
+                      Pool: ${(record.poolTotal ?? 0).toLocaleString('en-US')}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="font-semibold text-green-500">
-                      +${record.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      +${(record.amount ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {record.rakePercent}% rake
+                      {record.rakePercent ?? 0}% rake
                     </p>
                   </div>
                 </div>
@@ -376,7 +376,7 @@ export default function AdminRevenuePage() {
                   </div>
                   <div className="text-right">
                     <p className="font-semibold text-green-500">
-                      +${record.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      +${(record.amount ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </p>
                     <span
                       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${

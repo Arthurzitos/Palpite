@@ -69,7 +69,7 @@ function SettingRow({
           )}
         </span>
       ) : type === 'currency' ? (
-        <span className="font-medium">R$ {Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+        <span className="font-medium">R$ {(Number(value) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
       ) : (
         <span className="font-medium">{value}</span>
       )}

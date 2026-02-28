@@ -72,7 +72,7 @@ function StatCard({
         </div>
         <div>
           <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="text-2xl font-bold">{value.toLocaleString('pt-BR')}</p>
+          <p className="text-2xl font-bold">{(value ?? 0).toLocaleString('pt-BR')}</p>
         </div>
       </div>
     </div>
@@ -266,7 +266,7 @@ function AdjustBalanceModal({
           <div className="rounded-lg bg-secondary p-4">
             <p className="text-sm text-muted-foreground">Usuario: {user.username}</p>
             <p className="mt-1 text-xl font-bold">
-              Saldo atual: R$ {user.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              Saldo atual: R$ {(user.balance ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
 
@@ -545,13 +545,13 @@ export default function AdminUsersPage() {
                   <div className="text-right">
                     <p className="text-sm text-muted-foreground">Saldo</p>
                     <p className="font-medium">
-                      R$ {user.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {(user.balance ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-muted-foreground">Apostado</p>
                     <p className="font-medium">
-                      R$ {user.totalWagered.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {(user.totalWagered ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
                   </div>
                   <div className="text-right">

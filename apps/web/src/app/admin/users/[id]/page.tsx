@@ -146,7 +146,7 @@ function AdjustBalanceModal({
           <div className="rounded-lg bg-secondary p-4">
             <p className="text-sm text-muted-foreground">Usuario: {user.username}</p>
             <p className="mt-1 text-xl font-bold">
-              Saldo atual: R$ {user.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              Saldo atual: R$ {(user.balance ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
 
@@ -395,7 +395,7 @@ export default function AdminUserDetailPage() {
             <div>
               <p className="text-sm text-muted-foreground">Saldo</p>
               <p className="text-xl font-bold">
-                R$ {user.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                R$ {(user.balance ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
             </div>
           </div>
@@ -408,7 +408,7 @@ export default function AdminUserDetailPage() {
             <div>
               <p className="text-sm text-muted-foreground">Total Apostado</p>
               <p className="text-xl font-bold">
-                R$ {user.totalWagered.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                R$ {(user.totalWagered ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
             </div>
           </div>
@@ -421,7 +421,7 @@ export default function AdminUserDetailPage() {
             <div>
               <p className="text-sm text-muted-foreground">Total Ganho</p>
               <p className="text-xl font-bold">
-                R$ {user.totalWon.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                R$ {(user.totalWon ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
             </div>
           </div>
@@ -448,13 +448,13 @@ export default function AdminUserDetailPage() {
           <div className="rounded-lg bg-secondary p-4">
             <p className="text-sm text-muted-foreground">Total Depositado</p>
             <p className="mt-1 text-2xl font-bold text-green-500">
-              R$ {user.totalDeposited.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ {(user.totalDeposited ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
           <div className="rounded-lg bg-secondary p-4">
             <p className="text-sm text-muted-foreground">Total Sacado</p>
             <p className="mt-1 text-2xl font-bold text-destructive">
-              R$ {user.totalWithdrawn.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ {(user.totalWithdrawn ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
           <div className="rounded-lg bg-secondary p-4">
@@ -462,10 +462,10 @@ export default function AdminUserDetailPage() {
             <p
               className={cn(
                 'mt-1 text-2xl font-bold',
-                user.totalWon - user.totalWagered >= 0 ? 'text-green-500' : 'text-destructive'
+                (user.totalWon ?? 0) - (user.totalWagered ?? 0) >= 0 ? 'text-green-500' : 'text-destructive'
               )}
             >
-              R$ {(user.totalWon - user.totalWagered).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ {((user.totalWon ?? 0) - (user.totalWagered ?? 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
         </div>
@@ -492,11 +492,11 @@ export default function AdminUserDetailPage() {
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className="font-medium">
-                        R$ {bet.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        R$ {(bet.amount ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </p>
-                      {bet.status === 'won' && bet.payout > 0 && (
+                      {bet.status === 'won' && (bet.payout ?? 0) > 0 && (
                         <p className="text-sm text-green-500">
-                          +R$ {bet.payout.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          +R$ {(bet.payout ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </p>
                       )}
                     </div>

@@ -105,32 +105,32 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-5">
         <StatCard
           title="Volume Total"
-          value={`$${stats.totalVolume.toLocaleString('en-US')}`}
+          value={`$${(stats.totalVolume ?? 0).toLocaleString('en-US')}`}
           icon={DollarSign}
           color="green"
         />
         <StatCard
           title="Receita (Rake)"
-          value={`$${(revenueStats?.totalEarned || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+          value={`$${(revenueStats?.totalEarned ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
           icon={TrendingUp}
           trend={revenueStats?.totalAvailable ? `$${revenueStats.totalAvailable.toFixed(2)} disponível` : undefined}
           color="green"
         />
         <StatCard
           title="Eventos Ativos"
-          value={stats.openEvents}
+          value={stats.openEvents ?? 0}
           icon={Calendar}
           color="primary"
         />
         <StatCard
           title="Total de Apostas"
-          value={stats.totalBets.toLocaleString('en-US')}
+          value={(stats.totalBets ?? 0).toLocaleString('en-US')}
           icon={Activity}
           color="orange"
         />
         <StatCard
           title="Usuários"
-          value={stats.totalUsers.toLocaleString('en-US')}
+          value={(stats.totalUsers ?? 0).toLocaleString('en-US')}
           icon={Users}
           color="blue"
         />
@@ -168,7 +168,7 @@ export default function AdminDashboardPage() {
                   <div>
                     <p className="font-medium">{event.title}</p>
                     <p className="text-sm text-muted-foreground">
-                      {event.outcomes.length} outcomes • ${event.totalPool.toLocaleString('en-US')} pool
+                      {event.outcomes?.length ?? 0} outcomes • ${(event.totalPool ?? 0).toLocaleString('en-US')} pool
                     </p>
                   </div>
                 </div>
@@ -207,21 +207,21 @@ export default function AdminDashboardPage() {
                 <div className="h-3 w-3 rounded-full bg-green-500" />
                 <span className="text-sm text-muted-foreground">Abertos</span>
               </div>
-              <span className="font-semibold">{stats.openEvents}</span>
+              <span className="font-semibold">{stats.openEvents ?? 0}</span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="h-3 w-3 rounded-full bg-blue-500" />
                 <span className="text-sm text-muted-foreground">Resolvidos</span>
               </div>
-              <span className="font-semibold">{stats.resolvedEvents}</span>
+              <span className="font-semibold">{stats.resolvedEvents ?? 0}</span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="h-3 w-3 rounded-full bg-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Total</span>
               </div>
-              <span className="font-semibold">{stats.totalEvents}</span>
+              <span className="font-semibold">{stats.totalEvents ?? 0}</span>
             </div>
           </div>
         </div>
@@ -233,19 +233,19 @@ export default function AdminDashboardPage() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Volume médio por evento</span>
               <span className="font-semibold">
-                ${stats.totalEvents > 0 ? Math.round(stats.totalVolume / stats.totalEvents).toLocaleString('en-US') : 0}
+                ${(stats.totalEvents ?? 0) > 0 ? Math.round((stats.totalVolume ?? 0) / stats.totalEvents).toLocaleString('en-US') : 0}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Apostas por evento</span>
               <span className="font-semibold">
-                {stats.totalEvents > 0 ? Math.round(stats.totalBets / stats.totalEvents) : 0}
+                {(stats.totalEvents ?? 0) > 0 ? Math.round((stats.totalBets ?? 0) / stats.totalEvents) : 0}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Taxa de resolução</span>
               <span className="font-semibold">
-                {stats.totalEvents > 0 ? Math.round((stats.resolvedEvents / stats.totalEvents) * 100) : 0}%
+                {(stats.totalEvents ?? 0) > 0 ? Math.round(((stats.resolvedEvents ?? 0) / stats.totalEvents) * 100) : 0}%
               </span>
             </div>
           </div>
