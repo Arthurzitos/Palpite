@@ -1,6 +1,6 @@
 'use client';
 
-import { Sidebar, Header, TickerBar, BetSlip } from '@/components/layout';
+import { Sidebar, Header, BetSlip } from '@/components/layout';
 import { useBetSlip } from '@/hooks/use-bet-slip';
 
 export default function AppLayout({
@@ -29,7 +29,6 @@ export default function AppLayout({
           width: 'calc(100% - var(--sidebar-width) - var(--betslip-width))',
         }}
       >
-        <TickerBar />
         <Header />
         <main className="p-6 max-w-full">
           {children}
