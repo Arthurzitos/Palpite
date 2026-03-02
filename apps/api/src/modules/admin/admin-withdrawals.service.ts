@@ -3,7 +3,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection, Types } from 'mongoose';
 import { Transaction, TransactionDocument } from '../transactions/schemas/transaction.schema';
-import { TransactionsService } from '../transactions/transactions.service';
 import { UsersService } from '../users/users.service';
 import { BetsService } from '../bets/bets.service';
 import { NowPaymentsService } from '../wallet/services/nowpayments.service';
@@ -57,7 +56,6 @@ export class AdminWithdrawalsService {
   constructor(
     @InjectModel(Transaction.name) private transactionModel: Model<TransactionDocument>,
     @InjectConnection() private connection: Connection,
-    private transactionsService: TransactionsService,
     private usersService: UsersService,
     private betsService: BetsService,
     private nowPaymentsService: NowPaymentsService,
@@ -262,10 +260,17 @@ export class AdminWithdrawalsService {
       );
 
       const metadata = transaction.metadata as Record<string, string>;
+      const address = metadata?.address;
+      const network = metadata?.network;
+
+      if (!address || !network) {
+        throw new BadRequestException('Withdrawal is missing address or network information');
+      }
+
       const payoutResponse = await this.nowPaymentsService.createPayout(
         transaction.amount,
-        metadata.address,
-        metadata.network,
+        address,
+        network,
         transaction._id.toString(),
       );
 
@@ -351,7 +356,8 @@ export class AdminWithdrawalsService {
   }
 
   private async enrichWithdrawal(tx: Record<string, unknown>): Promise<WithdrawalWithUser> {
-    const userId = (tx.userId as { _id: Types.ObjectId })._id?.toString() || tx.userId?.toString();
+    const userField = tx.userId as { _id: Types.ObjectId; email?: string; username?: string } | Types.ObjectId;
+    const userId = (userField as { _id: Types.ObjectId })._id?.toString() || userField?.toString() || '';
     const userContext = await this.getUserContext(userId);
 
     const user = tx.userId as { _id: Types.ObjectId; email: string; username: string };
@@ -360,7 +366,7 @@ export class AdminWithdrawalsService {
 
     return {
       _id: (tx._id as Types.ObjectId).toString(),
-      userId,
+      userId: userId,
       user: {
         _id: user._id?.toString() || userId,
         email: user.email || '',
@@ -400,7 +406,7 @@ export class AdminWithdrawalsService {
       totalDeposited: user.totalDeposited,
       totalWithdrawn: user.totalWithdrawn,
       accountAgeDays,
-      totalBets: betsResult.pagination.total,
+      totalBets: betsResult.total,
     };
   }
 }

@@ -12,12 +12,10 @@ export interface EmailOptions {
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private readonly provider: string;
-  private readonly fromEmail: string;
   private readonly adminEmail: string;
 
   constructor(private configService: ConfigService) {
     this.provider = this.configService.get<string>('EMAIL_PROVIDER') || 'console';
-    this.fromEmail = this.configService.get<string>('EMAIL_FROM') || 'noreply@palpite.market';
     this.adminEmail = this.configService.get<string>('ADMIN_EMAIL') || '';
   }
 
