@@ -46,11 +46,12 @@ export const useAuth = create<AuthState>((set) => ({
         isLoading: false
       });
     } catch (error) {
+      const errorMessage = getErrorMessage(error);
       set({
-        error: getErrorMessage(error),
+        error: errorMessage,
         isLoading: false
       });
-      throw error;
+      throw new Error(errorMessage);
     }
   },
 
@@ -66,11 +67,12 @@ export const useAuth = create<AuthState>((set) => ({
         isLoading: false
       });
     } catch (error) {
+      const errorMessage = getErrorMessage(error);
       set({
-        error: getErrorMessage(error),
+        error: errorMessage,
         isLoading: false
       });
-      throw error;
+      throw new Error(errorMessage);
     }
   },
 

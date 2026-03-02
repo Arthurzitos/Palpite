@@ -35,8 +35,11 @@ export default function LoginPage() {
     try {
       await login(data.email, data.password);
       router.push('/markets');
-    } catch {
-      setFormError(error || 'Erro ao fazer login');
+    } catch (err) {
+      // Error is already set in the auth store, but we need to handle it here
+      // The error state will be updated by the store and displayed via the error variable
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao fazer login';
+      setFormError(errorMessage);
     }
   };
 
