@@ -52,10 +52,7 @@ async function cleanup() {
     console.log(`✓ Deleted ${testUsersDeleted.deletedCount} test users`);
 
     // Reset admin balance to 0 (clean start)
-    await userModel.updateOne(
-      { email: 'admin@prediction.local' },
-      { $set: { balance: 0 } }
-    );
+    await userModel.updateOne({ email: 'admin@prediction.local' }, { $set: { balance: 0 } });
     console.log('✓ Reset admin balance to 0');
 
     console.log('');

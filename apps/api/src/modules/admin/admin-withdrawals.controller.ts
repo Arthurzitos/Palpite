@@ -3,11 +3,7 @@ import { JwtAuthGuard, RolesGuard } from '../../common/guards';
 import { Roles, CurrentUser } from '../../common/decorators';
 import { UserRole } from '@prediction-market/shared';
 import { AdminWithdrawalsService } from './admin-withdrawals.service';
-import {
-  AdminWithdrawalFiltersDto,
-  ApproveWithdrawalDto,
-  RejectWithdrawalDto,
-} from './dto';
+import { AdminWithdrawalFiltersDto, ApproveWithdrawalDto, RejectWithdrawalDto } from './dto';
 
 interface AuthUser {
   userId: string;

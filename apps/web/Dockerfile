@@ -25,10 +25,8 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy dependencies from deps stage
+# Copy dependencies from deps stage (npm workspaces hoists to root node_modules)
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
 
 # Copy source files
 COPY package.json package-lock.json tsconfig.base.json ./
@@ -74,6 +72,10 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
+
+# Copy package.json files for npm start compatibility (some platforms run npm start instead of CMD)
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/apps/web/package.json ./apps/web/package.json
 
 # Change ownership to non-root user
 RUN chown -R nextjs:nodejs /app

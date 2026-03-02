@@ -63,7 +63,16 @@ export class AdminWithdrawalsService {
   ) {}
 
   async findAll(filters: AdminWithdrawalFiltersDto) {
-    const { status, search, dateFrom, dateTo, minAmount, maxAmount, page = 1, limit = 20 } = filters;
+    const {
+      status,
+      search,
+      dateFrom,
+      dateTo,
+      minAmount,
+      maxAmount,
+      page = 1,
+      limit = 20,
+    } = filters;
     const skip = (page - 1) * limit;
 
     const query: Record<string, unknown> = {
@@ -343,9 +352,7 @@ export class AdminWithdrawalsService {
     transaction.reviewNotes = notes;
     await transaction.save();
 
-    this.logger.log(
-      `Withdrawal rejected: txId=${id}, admin=${adminId}, reason=${reason}`,
-    );
+    this.logger.log(`Withdrawal rejected: txId=${id}, admin=${adminId}, reason=${reason}`);
 
     // Send email notification (non-blocking)
     this.emailService
@@ -356,8 +363,11 @@ export class AdminWithdrawalsService {
   }
 
   private async enrichWithdrawal(tx: Record<string, unknown>): Promise<WithdrawalWithUser> {
-    const userField = tx.userId as { _id: Types.ObjectId; email?: string; username?: string } | Types.ObjectId;
-    const userId = (userField as { _id: Types.ObjectId })._id?.toString() || userField?.toString() || '';
+    const userField = tx.userId as
+      | { _id: Types.ObjectId; email?: string; username?: string }
+      | Types.ObjectId;
+    const userId =
+      (userField as { _id: Types.ObjectId })._id?.toString() || userField?.toString() || '';
     const userContext = await this.getUserContext(userId);
 
     const user = tx.userId as { _id: Types.ObjectId; email: string; username: string };

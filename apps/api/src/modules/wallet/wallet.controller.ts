@@ -66,10 +66,7 @@ export class WalletController {
 
   @Delete('withdrawals/:id')
   @HttpCode(HttpStatus.OK)
-  async cancelWithdrawal(
-    @CurrentUser() user: CurrentUserPayload,
-    @Param('id') id: string,
-  ) {
+  async cancelWithdrawal(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
     await this.walletService.cancelWithdrawal(user.userId, id);
     return { success: true, message: 'Withdrawal cancelled successfully' };
   }
