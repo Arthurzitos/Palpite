@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -48,7 +49,7 @@ const userLinks = [
   { name: 'Portfolio', href: '/portfolio', icon: PieChart },
 ];
 
-export function Sidebar() {
+function SidebarContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, isAuthenticated } = useAuth();
@@ -198,5 +199,15 @@ export function Sidebar() {
         )}
       </div>
     </aside>
+  );
+}
+
+export function Sidebar() {
+  return (
+    <Suspense fallback={
+      <aside className="fixed left-0 top-0 z-40 h-screen w-[var(--sidebar-width)] border-r border-border bg-background hidden lg:block" />
+    }>
+      <SidebarContent />
+    </Suspense>
   );
 }

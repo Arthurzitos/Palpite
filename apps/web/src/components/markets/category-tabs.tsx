@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
@@ -35,7 +36,7 @@ interface CategoryTabsProps {
   onCategoryChange?: (category: string) => void;
 }
 
-export function CategoryTabs({
+function CategoryTabsContent({
   activeCategory: controlledActiveCategory,
   onCategoryChange,
 }: CategoryTabsProps) {
@@ -90,5 +91,22 @@ export function CategoryTabs({
         );
       })}
     </div>
+  );
+}
+
+export function CategoryTabs(props: CategoryTabsProps) {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+        {categories.map((category) => (
+          <div
+            key={category.id}
+            className="h-9 w-20 animate-pulse rounded-full bg-muted"
+          />
+        ))}
+      </div>
+    }>
+      <CategoryTabsContent {...props} />
+    </Suspense>
   );
 }
