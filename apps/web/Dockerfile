@@ -57,8 +57,6 @@ RUN npm run build
 # -----------------------------------------------------------------------------
 FROM node:20-alpine AS runner
 
-WORKDIR /app
-
 # Set production environment
 ENV NODE_ENV=production
 ENV PORT=3000
@@ -68,14 +66,13 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy necessary files for standalone build
-COPY --from=builder /app/apps/web/public ./apps/web/public
+# Copy standalone build (includes server.js at apps/web/server.js)
+WORKDIR /app
 COPY --from=builder /app/apps/web/.next/standalone ./
-COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 
-# Copy package.json files for npm start compatibility (some platforms run npm start instead of CMD)
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/apps/web/package.json ./apps/web/package.json
+# Copy static assets
+COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder /app/apps/web/public ./apps/web/public
 
 # Change ownership to non-root user
 RUN chown -R nextjs:nodejs /app
@@ -90,5 +87,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
 
-# Start the application
+# Start the standalone server
 CMD ["node", "apps/web/server.js"]
