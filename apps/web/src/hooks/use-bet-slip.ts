@@ -17,18 +17,26 @@ interface BetSlipState {
   items: BetSlipItem[];
   isPlacingBet: boolean;
   error: string | null;
+  isExpanded: boolean;
 
   addItem: (item: BetSlipItem) => void;
   removeItem: (id: string) => void;
   clearItems: () => void;
   placeBet: (amount: number) => Promise<boolean>;
   clearError: () => void;
+  toggleExpanded: () => void;
+  setExpanded: (expanded: boolean) => void;
 }
 
 export const useBetSlip = create<BetSlipState>((set, get) => ({
   items: [],
   isPlacingBet: false,
   error: null,
+  isExpanded: false,
+
+  toggleExpanded: () => set((state) => ({ isExpanded: !state.isExpanded })),
+
+  setExpanded: (expanded) => set({ isExpanded: expanded }),
 
   addItem: (item) => {
     set((state) => {
@@ -37,10 +45,10 @@ export const useBetSlip = create<BetSlipState>((set, get) => ({
       if (existingIndex >= 0) {
         const newItems = [...state.items];
         newItems[existingIndex] = item;
-        return { items: newItems };
+        return { items: newItems, isExpanded: true };
       }
       // For now, only allow one item at a time
-      return { items: [item] };
+      return { items: [item], isExpanded: true };
     });
   },
 

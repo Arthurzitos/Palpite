@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   BarChart3,
@@ -50,8 +50,38 @@ const userLinks = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user, isAuthenticated } = useAuth();
   const isAdmin = isAuthenticated && user?.role === UserRole.ADMIN;
+
+  const currentCategory = searchParams.get('category');
+  const currentFilter = searchParams.get('filter');
+
+  const isNavActive = (href: string) => {
+    const url = new URL(href, 'http://localhost');
+    const hrefFilter = url.searchParams.get('filter');
+
+    // For non-filter nav items, check exact match
+    if (!hrefFilter) {
+      return pathname === href && !currentFilter && !currentCategory;
+    }
+
+    // For filter items, check if filter matches
+    return currentFilter === hrefFilter;
+  };
+
+  const isCategoryActive = (href: string) => {
+    const url = new URL(href, 'http://localhost');
+    const hrefCategory = url.searchParams.get('category');
+
+    // "Todos" is active when no category and no filter is set
+    if (!hrefCategory && !currentCategory && !currentFilter && pathname === '/markets') {
+      return true;
+    }
+
+    // Category matches
+    return hrefCategory === currentCategory;
+  };
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-[var(--sidebar-width)] border-r border-border bg-background hidden lg:block">
@@ -71,7 +101,7 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 space-y-1 px-3 py-4">
           {navigation.map((item) => {
-            const isActive = pathname === item.href || (item.href === '/markets' && pathname === '/markets');
+            const isActive = isNavActive(item.href);
             return (
               <Link
                 key={item.name}
@@ -107,7 +137,7 @@ export function Sidebar() {
               Categorias
             </p>
             {categories.map((item) => {
-              const isActive = pathname + (typeof window !== 'undefined' ? window.location.search : '') === item.href;
+              const isActive = isCategoryActive(item.href);
               return (
                 <Link
                   key={item.name}

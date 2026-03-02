@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   Flame,
@@ -30,23 +31,51 @@ const categories: Category[] = [
 ];
 
 interface CategoryTabsProps {
-  activeCategory: string;
-  onCategoryChange: (category: string) => void;
+  activeCategory?: string;
+  onCategoryChange?: (category: string) => void;
 }
 
 export function CategoryTabs({
-  activeCategory,
+  activeCategory: controlledActiveCategory,
   onCategoryChange,
 }: CategoryTabsProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Use URL as source of truth, fallback to prop
+  const activeCategory = controlledActiveCategory ?? searchParams.get('category') ?? 'all';
+
+  const handleCategoryChange = (category: string) => {
+    // Call the callback if provided
+    onCategoryChange?.(category);
+
+    // Update URL
+    const params = new URLSearchParams(searchParams.toString());
+    if (category === 'all') {
+      params.delete('category');
+      params.delete('filter');
+    } else if (category === 'trending') {
+      params.delete('category');
+      params.set('filter', 'trending');
+    } else {
+      params.set('category', category);
+      params.delete('filter');
+    }
+
+    const queryString = params.toString();
+    router.push(`/markets${queryString ? `?${queryString}` : ''}`);
+  };
+
   return (
     <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
       {categories.map((category) => {
-        const isActive = activeCategory === category.id;
+        const isActive = activeCategory === category.id ||
+          (category.id === 'trending' && searchParams.get('filter') === 'trending');
         const Icon = category.icon;
         return (
           <button
             key={category.id}
-            onClick={() => onCategoryChange(category.id)}
+            onClick={() => handleCategoryChange(category.id)}
             className={cn(
               'flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-colors',
               isActive
