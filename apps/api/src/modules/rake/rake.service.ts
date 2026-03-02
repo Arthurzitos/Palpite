@@ -76,8 +76,7 @@ export class RakeService {
       status: RakeStatus.AVAILABLE,
     });
 
-    const averageRakePerEvent =
-      rakeRecordsCount > 0 ? wallet.totalEarned / rakeRecordsCount : 0;
+    const averageRakePerEvent = rakeRecordsCount > 0 ? wallet.totalEarned / rakeRecordsCount : 0;
 
     return {
       totalEarned: Math.round(wallet.totalEarned * 100) / 100,
@@ -89,7 +88,10 @@ export class RakeService {
     };
   }
 
-  async getRakeByPeriod(period: 'day' | 'week' | 'month' = 'day', limit = 30): Promise<RakeByPeriod[]> {
+  async getRakeByPeriod(
+    period: 'day' | 'week' | 'month' = 'day',
+    limit = 30,
+  ): Promise<RakeByPeriod[]> {
     const groupFormat = {
       day: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
       week: {
@@ -124,9 +126,7 @@ export class RakeService {
     return results;
   }
 
-  async getRakeHistory(
-    filters: { page?: number; limit?: number; status?: RakeStatus } = {},
-  ) {
+  async getRakeHistory(filters: { page?: number; limit?: number; status?: RakeStatus } = {}) {
     const page = filters.page || 1;
     const limit = filters.limit || 20;
     const skip = (page - 1) * limit;
@@ -184,7 +184,9 @@ export class RakeService {
     }
 
     if (!this.nowPaymentsService.isPayoutConfigured()) {
-      throw new BadRequestException('Payout service not configured. Set NOWPAYMENTS_EMAIL and NOWPAYMENTS_PASSWORD.');
+      throw new BadRequestException(
+        'Payout service not configured. Set NOWPAYMENTS_EMAIL and NOWPAYMENTS_PASSWORD.',
+      );
     }
 
     const session = await this.connection.startSession();

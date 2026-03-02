@@ -2,8 +2,10 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Query,
+  Param,
   Headers,
   UseGuards,
   HttpCode,
@@ -14,6 +16,7 @@ import { JwtAuthGuard } from '../../common/guards';
 import { CurrentUser, CurrentUserPayload, Public } from '../../common/decorators';
 import { WalletService } from './wallet.service';
 import { DepositCryptoDto, DepositFiatDto, WithdrawDto } from './dto';
+import { TransactionStatus } from '@prediction-market/shared';
 
 @Controller('wallet')
 @UseGuards(JwtAuthGuard)
@@ -26,32 +29,49 @@ export class WalletController {
   }
 
   @Post('deposit/crypto')
-  async depositCrypto(
-    @CurrentUser() user: CurrentUserPayload,
-    @Body() dto: DepositCryptoDto,
-  ) {
+  async depositCrypto(@CurrentUser() user: CurrentUserPayload, @Body() dto: DepositCryptoDto) {
     return this.walletService.depositCrypto(user.userId, dto.amount);
   }
 
   @Post('deposit/fiat')
-  async depositFiat(
-    @CurrentUser() user: CurrentUserPayload,
-    @Body() dto: DepositFiatDto,
-  ) {
+  async depositFiat(@CurrentUser() user: CurrentUserPayload, @Body() dto: DepositFiatDto) {
     return this.walletService.depositFiat(user.userId, dto.amount);
   }
 
   @Post('withdraw')
-  async withdraw(
+  async withdraw(@CurrentUser() user: CurrentUserPayload, @Body() dto: WithdrawDto) {
+    return this.walletService.withdraw(user.userId, dto.amount, dto.address, dto.network);
+  }
+
+  @Get('available-balance')
+  async getAvailableBalance(@CurrentUser() user: CurrentUserPayload) {
+    return this.walletService.getAvailableBalance(user.userId);
+  }
+
+  @Get('withdrawals')
+  async getWithdrawals(
     @CurrentUser() user: CurrentUserPayload,
-    @Body() dto: WithdrawDto,
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.walletService.withdraw(
+    const statusEnum = status ? (status as TransactionStatus) : undefined;
+    return this.walletService.getWithdrawals(
       user.userId,
-      dto.amount,
-      dto.address,
-      dto.network,
+      statusEnum,
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 20,
     );
+  }
+
+  @Delete('withdrawals/:id')
+  @HttpCode(HttpStatus.OK)
+  async cancelWithdrawal(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+  ) {
+    await this.walletService.cancelWithdrawal(user.userId, id);
+    return { success: true, message: 'Withdrawal cancelled successfully' };
   }
 
   @Get('transactions')

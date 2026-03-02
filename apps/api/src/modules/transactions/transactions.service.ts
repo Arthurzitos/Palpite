@@ -1,8 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, ClientSession } from 'mongoose';
+import { Model, ClientSession, Types } from 'mongoose';
 import { Transaction, TransactionDocument } from './schemas/transaction.schema';
 import { TransactionType, TransactionStatus } from '@prediction-market/shared';
+
+export interface WithdrawalFilters {
+  userId: string;
+  status?: TransactionStatus;
+  page?: number;
+  limit?: number;
+}
 
 export interface CreateTransactionInput {
   userId: string;
@@ -69,11 +76,7 @@ export class TransactionsService {
     if (status) query.status = status;
 
     const [transactions, total] = await Promise.all([
-      this.transactionModel
-        .find(query)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
+      this.transactionModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
       this.transactionModel.countDocuments(query),
     ]);
 
@@ -139,5 +142,94 @@ export class TransactionsService {
       updateFields[`metadata.${key}`] = value;
     }
     return this.transactionModel.findByIdAndUpdate(id, updateFields, { new: true });
+  }
+
+  async getSumPendingWithdrawals(userId: string): Promise<number> {
+    const result = await this.transactionModel.aggregate([
+      {
+        $match: {
+          userId: new Types.ObjectId(userId),
+          type: TransactionType.WITHDRAWAL,
+          status: {
+            $in: [TransactionStatus.PENDING_APPROVAL, TransactionStatus.APPROVED],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$amount' },
+        },
+      },
+    ]);
+    return result[0]?.total || 0;
+  }
+
+  async checkDuplicateWithdrawal(
+    userId: string,
+    amount: number,
+    address: string,
+    network: string,
+  ): Promise<boolean> {
+    const existing = await this.transactionModel.findOne({
+      userId: new Types.ObjectId(userId),
+      type: TransactionType.WITHDRAWAL,
+      status: TransactionStatus.PENDING_APPROVAL,
+      amount,
+      'metadata.address': address,
+      'metadata.network': network,
+    });
+    return !!existing;
+  }
+
+  async findWithdrawalsByUser(filters: WithdrawalFilters) {
+    const { userId, status, page = 1, limit = 20 } = filters;
+    const skip = (page - 1) * limit;
+
+    const query: Record<string, unknown> = {
+      userId: new Types.ObjectId(userId),
+      type: TransactionType.WITHDRAWAL,
+    };
+
+    if (status) {
+      query.status = status;
+    }
+
+    const [withdrawals, total] = await Promise.all([
+      this.transactionModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      this.transactionModel.countDocuments(query),
+    ]);
+
+    return {
+      withdrawals,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async updateWithdrawalReview(
+    id: string,
+    data: {
+      status: TransactionStatus;
+      reviewedBy: string;
+      reviewNotes?: string;
+      rejectionReason?: string;
+    },
+  ): Promise<TransactionDocument | null> {
+    return this.transactionModel.findByIdAndUpdate(
+      id,
+      {
+        status: data.status,
+        reviewedBy: new Types.ObjectId(data.reviewedBy),
+        reviewedAt: new Date(),
+        reviewNotes: data.reviewNotes,
+        rejectionReason: data.rejectionReason,
+      },
+      { new: true },
+    );
   }
 }

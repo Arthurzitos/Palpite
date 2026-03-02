@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  NestInterceptor,
-  ExecutionContext,
-  CallHandler,
-} from '@nestjs/common';
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { Request, Response } from 'express';
@@ -25,7 +20,7 @@ export class LoggingInterceptor implements NestInterceptor {
 
     // Log request body for non-GET requests (excluding sensitive endpoints)
     const sensitiveEndpoints = ['/auth/login', '/auth/register', '/auth/refresh'];
-    const isSensitive = sensitiveEndpoints.some(ep => url.includes(ep));
+    const isSensitive = sensitiveEndpoints.some((ep) => url.includes(ep));
 
     if (method !== 'GET' && !isSensitive) {
       this.logger.debug(`Request body: ${JSON.stringify(body)}`, 'LoggingInterceptor');

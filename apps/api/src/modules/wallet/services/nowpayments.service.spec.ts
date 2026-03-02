@@ -265,17 +265,17 @@ describe('NowPaymentsService', () => {
     it('should throw when apiKey is not configured for createInvoice', async () => {
       const unconfiguredService = await createUnconfiguredService();
 
-      await expect(
-        unconfiguredService.createInvoice(100, 'order-123', 'Deposit'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(unconfiguredService.createInvoice(100, 'order-123', 'Deposit')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw when apiKey is not configured for createPayment', async () => {
       const unconfiguredService = await createUnconfiguredService();
 
-      await expect(
-        unconfiguredService.createPayment(100, 'order-123', 'Deposit'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(unconfiguredService.createPayment(100, 'order-123', 'Deposit')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 });

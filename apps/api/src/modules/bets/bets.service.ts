@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  BadRequestException,
-  ConflictException,
-} from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection, Types, FilterQuery, ClientSession } from 'mongoose';
 import { Bet, BetDocument } from './schemas/bet.schema';
@@ -190,11 +186,7 @@ export class BetsService {
           },
           settledBets: {
             $sum: {
-              $cond: [
-                { $in: ['$status', [BetStatus.WON, BetStatus.LOST]] },
-                1,
-                0,
-              ],
+              $cond: [{ $in: ['$status', [BetStatus.WON, BetStatus.LOST]] }, 1, 0],
             },
           },
         },

@@ -118,9 +118,7 @@ describe('PaymentPollingService', () => {
   describe('NOWPayments polling', () => {
     it('should process successful NOWPayments deposit', async () => {
       const pendingTransaction = createMockTransaction();
-      transactionsService.findPendingByProvider.mockResolvedValueOnce(
-        [pendingTransaction] as any,
-      );
+      transactionsService.findPendingByProvider.mockResolvedValueOnce([pendingTransaction] as any);
       transactionsService.checkIdempotency.mockResolvedValue(false);
       transactionsService.findById.mockResolvedValue(pendingTransaction as any);
       usersService.findById.mockResolvedValue(mockUser as any);
@@ -148,9 +146,7 @@ describe('PaymentPollingService', () => {
 
     it('should mark failed NOWPayments deposit', async () => {
       const pendingTransaction = createMockTransaction();
-      transactionsService.findPendingByProvider.mockResolvedValueOnce(
-        [pendingTransaction] as any,
-      );
+      transactionsService.findPendingByProvider.mockResolvedValueOnce([pendingTransaction] as any);
 
       nowPaymentsService.getPaymentStatus.mockResolvedValue({
         payment_status: 'failed',
@@ -171,9 +167,9 @@ describe('PaymentPollingService', () => {
       const transactionWithoutInvoice = createMockTransaction({
         metadata: { provider: 'nowpayments' },
       });
-      transactionsService.findPendingByProvider.mockResolvedValueOnce(
-        [transactionWithoutInvoice] as any,
-      );
+      transactionsService.findPendingByProvider.mockResolvedValueOnce([
+        transactionWithoutInvoice,
+      ] as any);
 
       await service.pollPendingPayments();
 
@@ -184,9 +180,7 @@ describe('PaymentPollingService', () => {
   describe('idempotency', () => {
     it('should skip already processed transactions', async () => {
       const pendingTransaction = createMockTransaction();
-      transactionsService.findPendingByProvider.mockResolvedValueOnce(
-        [pendingTransaction] as any,
-      );
+      transactionsService.findPendingByProvider.mockResolvedValueOnce([pendingTransaction] as any);
       transactionsService.checkIdempotency.mockResolvedValue(true);
 
       nowPaymentsService.getPaymentStatus.mockResolvedValue({
@@ -240,9 +234,7 @@ describe('PaymentPollingService', () => {
 
     it('should rollback transaction on processing error', async () => {
       const pendingTransaction = createMockTransaction();
-      transactionsService.findPendingByProvider.mockResolvedValueOnce(
-        [pendingTransaction] as any,
-      );
+      transactionsService.findPendingByProvider.mockResolvedValueOnce([pendingTransaction] as any);
       transactionsService.checkIdempotency.mockResolvedValue(false);
 
       nowPaymentsService.getPaymentStatus.mockResolvedValue({

@@ -13,20 +13,20 @@
 | 1. Preparação Local | ✅ Concluído | Secrets gerados, `.env.production` criado |
 | 2. MongoDB Atlas | ✅ Concluído | Cluster configurado em South America |
 | 3. Redis (Upstash) | ✅ Concluído | Database configurado em South America |
-| 4. NOWPayments | 🔲 Pendente | Falta configurar credenciais de produção |
+| 4. NOWPayments | ✅ Concluído | API Key, IPN Secret e Webhook configurados |
 | 5. Deploy API (Railway) | ✅ Concluído | Online em `api.palpite.me` |
 | 6. Deploy Frontend (Railway) | ✅ Concluído | Online em `palpite.me` |
-| 7. Domínio e SSL | ⚠️ Em progresso | DNS configurado, aguardando propagação + corrigir CORS |
+| 7. Domínio e SSL | ✅ Concluído | DNS propagado, CORS corrigido |
 | 8. CI/CD | ✅ Concluído | Workflows criados, falta configurar secrets no GitHub |
-| 9. Monitoramento | 🔲 Pendente | - |
+| 9. Monitoramento | ✅ Concluído | UptimeRobot + Sentry configurados |
 | 10. Testes Finais | 🔲 Pendente | - |
 
 ### Problemas Atuais
 
 | Problema | Status | Solução |
 |----------|--------|---------|
-| Erro de CORS no login | ⚠️ Pendente | Configurar `FRONTEND_URL=https://palpite.me` na API |
-| Seed não executado | ⚠️ Pendente | Rodar seed no banco de produção |
+| Erro de CORS no login | ✅ Resolvido | Corrigido suporte a múltiplas origens em `main.ts` |
+| Seed não executado | ✅ Resolvido | Seed executado no banco de produção |
 
 ---
 
@@ -372,25 +372,16 @@ PORT=3000
 - **Tempo estimado:** 5-15 minutos (pode levar até 1h)
 - **Verificar:** Os domínios devem ficar verdes no Railway (sem ⚠️)
 
-### 7.4 Corrigir Erro de CORS ⚠️ PENDENTE
+### 7.4 Corrigir Erro de CORS ✅ RESOLVIDO
 
-**Problema:** Ao tentar fazer login, aparece erro de CORS:
-```
-Access to XMLHttpRequest has been blocked by CORS policy:
-No 'Access-Control-Allow-Origin' header is present
-```
+**Problema:** Ao tentar fazer login, aparecia erro de CORS.
 
-**Causa:** A variável `FRONTEND_URL` na API não estava configurada com o domínio de produção.
+**Solução aplicada:** Modificado `apps/api/src/main.ts` para suportar múltiplas origens:
+- `https://palpite.me`
+- `https://www.palpite.me`
+- `http://localhost:3000` (desenvolvimento)
 
-**Solução:**
-
-1. No Railway, serviço **@prediction-market/api**
-2. Vá em **Variables**
-3. Certifique-se que existe:
-   ```
-   FRONTEND_URL=https://palpite.me
-   ```
-4. Faça **Redeploy**
+Commit: `fix: CORS configuration to support multiple origins`
 
 ### 7.5 Verificar SSL
 
@@ -406,7 +397,7 @@ curl -I https://api.palpite.me/api/health
 # Deve retornar HTTP/2 200
 ```
 
-**Checkpoint:** ⚠️ DNS configurado, aguardando propagação + corrigir CORS
+**Checkpoint:** ✅ DNS propagado, SSL ativo, CORS corrigido
 
 ---
 
@@ -491,12 +482,9 @@ npm install @sentry/nextjs -w apps/web
 
 ## 10. Testes Finais 🔲
 
-### 10.1 Executar Seed no Banco de Produção
+### 10.1 Executar Seed no Banco de Produção ✅
 
-```bash
-# Localmente, com a connection string do Atlas
-MONGODB_URI="mongodb+srv://usuario:senha@cluster.mongodb.net/prediction-market" npm run seed --workspace=@prediction-market/api
-```
+Seed executado com sucesso.
 
 **Credenciais de teste criadas pelo seed:**
 
@@ -546,21 +534,21 @@ MONGODB_URI="mongodb+srv://usuario:senha@cluster.mongodb.net/prediction-market" 
 
 - [x] MongoDB Atlas configurado e funcionando
 - [x] Redis Upstash configurado e funcionando
-- [ ] NOWPayments configurado
-- [ ] Webhooks configurados com URLs de produção
+- [x] NOWPayments configurado
+- [x] Webhooks configurados com URLs de produção
 - [x] API rodando no Railway
 - [x] Frontend rodando no Railway
-- [ ] Domínio configurado com SSL (aguardando propagação)
-- [ ] CORS corrigido (`FRONTEND_URL=https://palpite.me`)
-- [ ] Health checks passando
+- [x] Domínio configurado com SSL
+- [x] CORS corrigido (múltiplas origens suportadas)
+- [x] Health checks passando
 - [ ] Testes E2E de pagamento passando
 
 ### Alta Prioridade
 
 - [ ] CI/CD funcionando (falta secrets no GitHub)
-- [ ] Sentry configurado
-- [ ] UptimeRobot configurado
-- [ ] Seed executado no banco de produção
+- [x] Sentry configurado
+- [x] UptimeRobot configurado
+- [x] Seed executado no banco de produção
 - [ ] Alertas de email configurados
 
 ### Documentação

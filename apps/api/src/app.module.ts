@@ -18,6 +18,7 @@ import { WalletModule } from './modules/wallet/wallet.module';
 import { HealthModule } from './modules/health/health.module';
 import { RakeModule } from './modules/rake/rake.module';
 import { LoggerModule } from './common/logger/logger.module';
+import { EmailModule } from './modules/email/email.module';
 
 @Injectable()
 class ConditionalThrottlerGuard extends ThrottlerGuard {
@@ -68,6 +69,7 @@ class ConditionalThrottlerGuard extends ThrottlerGuard {
     WalletModule,
     HealthModule,
     RakeModule,
+    EmailModule,
   ],
   providers: [
     {

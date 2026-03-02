@@ -186,9 +186,7 @@ describe('TransactionsService', () => {
 
   describe('findPendingByProvider', () => {
     it('should find pending transactions by provider within time limit', async () => {
-      const pendingTransactions = [
-        { ...mockTransaction, status: TransactionStatus.PENDING },
-      ];
+      const pendingTransactions = [{ ...mockTransaction, status: TransactionStatus.PENDING }];
       mockTransactionModel.find.mockResolvedValue(pendingTransactions);
 
       const result = await service.findPendingByProvider('ccpayment', 60);
@@ -220,10 +218,7 @@ describe('TransactionsService', () => {
       };
       mockTransactionModel.findByIdAndUpdate.mockResolvedValue(failedTransaction);
 
-      const result = await service.markAsFailed(
-        '507f1f77bcf86cd799439011',
-        'Payment expired',
-      );
+      const result = await service.markAsFailed('507f1f77bcf86cd799439011', 'Payment expired');
 
       expect(result?.status).toBe(TransactionStatus.FAILED);
       expect(mockTransactionModel.findByIdAndUpdate).toHaveBeenCalledWith(

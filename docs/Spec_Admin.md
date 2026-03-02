@@ -2,7 +2,9 @@
 
 ## Sumario Executivo
 
-Este documento especifica a area de administracao do sistema Palpite Market, detalhando funcionalidades existentes, gaps identificados e requisitos para implementacao completa.
+Este documento especifica a area de administracao do sistema Palpite Market, detalhando funcionalidades implementadas e arquitetura da solucao.
+
+**Status: IMPLEMENTADO** (Atualizado em Março 2026)
 
 ---
 
@@ -17,16 +19,15 @@ Este documento especifica a area de administracao do sistema Palpite Market, det
 | Criacao de Eventos | `/admin/events/new` | Implementado |
 | Edicao de Eventos | `/admin/events/[id]` | Implementado |
 | Receita (Rake) | `/admin/revenue` | Implementado |
-| Gestao de Usuarios | `/admin/users` | NAO IMPLEMENTADO |
-| Configuracoes | `/admin/settings` | NAO IMPLEMENTADO |
+| Gestao de Usuarios | `/admin/users` | Implementado |
+| Detalhes do Usuario | `/admin/users/[id]` | Implementado |
+| Configuracoes | `/admin/settings` | Implementado (MVP) |
 
-### 1.2 Problemas Identificados
+### 1.2 Acesso a Area Admin
 
-1. **Acesso a area admin**: Nao existe link visivel para usuarios admin acessarem `/admin`. O usuario precisa digitar a URL manualmente.
-
-2. **Paginas incompletas**: A sidebar do admin lista "Usuarios" e "Configuracoes", mas essas paginas nao existem.
-
-3. **Gestao de usuarios**: Nao ha forma de listar, editar ou gerenciar usuarios pela interface admin.
+O acesso a area de administracao esta disponivel atraves de:
+- **Header principal**: Link "Admin" visivel apenas para usuarios com `role === ADMIN`
+- **URL direta**: `/admin` (protegido por autenticacao e role)
 
 ---
 
@@ -51,8 +52,11 @@ export enum UserRole {
 - `AdminLayout`: Verifica `user.role === UserRole.ADMIN`
 - Redireciona para `/login` se nao for admin
 - Hook `useAdmin`: State management para operacoes admin
+- Hook `useAdminUsers`: State management para gestao de usuarios
 
 ### 2.2 Endpoints Admin Existentes
+
+#### Eventos
 
 | Metodo | Endpoint | Descricao |
 |--------|----------|-----------|
@@ -63,6 +67,17 @@ export enum UserRole {
 | POST | `/api/admin/events/:id/lock` | Bloquear apostas |
 | POST | `/api/admin/events/:id/resolve` | Resolver evento |
 | POST | `/api/admin/events/:id/cancel` | Cancelar evento |
+
+#### Usuarios
+
+| Metodo | Endpoint | Descricao |
+|--------|----------|-----------|
+| GET | `/api/admin/users` | Listar usuarios (paginado, filtros) |
+| GET | `/api/admin/users/:id` | Detalhes do usuario |
+| GET | `/api/admin/users/:id/bets` | Apostas do usuario |
+| PATCH | `/api/admin/users/:id` | Atualizar usuario (role) |
+| POST | `/api/admin/users/:id/adjust-balance` | Ajustar saldo |
+| GET | `/api/admin/users/stats` | Estatisticas de usuarios |
 
 ### 2.3 Schema de Evento
 
@@ -95,11 +110,29 @@ interface Outcome {
 }
 ```
 
+### 2.4 Schema de Usuario (Admin View)
+
+```typescript
+interface AdminUser {
+  _id: string;
+  email: string;
+  username: string;
+  role: UserRole;
+  balance: number;
+  totalDeposited: number;
+  totalWithdrawn: number;
+  totalWagered: number;
+  totalWon: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
 ---
 
 ## 3. Funcionalidades Detalhadas
 
-### 3.1 Dashboard Admin (Implementado)
+### 3.1 Dashboard Admin
 
 **Rota:** `/admin`
 
@@ -118,7 +151,7 @@ interface Outcome {
 - `apps/web/src/hooks/use-admin.ts`
 - `apps/web/src/hooks/use-revenue.ts`
 
-### 3.2 Gestao de Eventos (Implementado)
+### 3.2 Gestao de Eventos
 
 **Rota:** `/admin/events`
 
@@ -136,7 +169,7 @@ interface Outcome {
 **Arquivos:**
 - `apps/web/src/app/admin/events/page.tsx`
 
-### 3.3 Criar Evento (Implementado)
+### 3.3 Criar Evento
 
 **Rota:** `/admin/events/new`
 
@@ -157,7 +190,7 @@ interface Outcome {
 **Arquivos:**
 - `apps/web/src/app/admin/events/new/page.tsx`
 
-### 3.4 Editar Evento (Implementado)
+### 3.4 Editar Evento
 
 **Rota:** `/admin/events/[id]`
 
@@ -178,7 +211,7 @@ interface Outcome {
 **Arquivos:**
 - `apps/web/src/app/admin/events/[id]/page.tsx`
 
-### 3.5 Receita/Rake (Implementado)
+### 3.5 Receita/Rake
 
 **Rota:** `/admin/revenue`
 
@@ -187,190 +220,86 @@ interface Outcome {
 - Saldo disponivel
 - Historico de rake por evento
 - Top eventos por receita
+- Filtro por periodo (dia, semana, mes)
 
 **Arquivos:**
 - `apps/web/src/app/admin/revenue/page.tsx`
 - `apps/web/src/hooks/use-revenue.ts`
 
----
-
-## 4. Funcionalidades a Implementar
-
-### 4.1 Link de Acesso Admin no Site Principal
-
-**Problema:** Usuarios admin nao conseguem acessar `/admin` sem digitar a URL manualmente.
-
-**Solucao:** Adicionar link condicional no header e/ou sidebar para usuarios com `role === ADMIN`.
-
-**Arquivos a modificar:**
-- `apps/web/src/components/layout/header.tsx`
-- `apps/web/src/components/layout/sidebar.tsx`
-
-**Implementacao sugerida:**
-
-```tsx
-// No Header, apos o menu de usuario
-{user?.role === UserRole.ADMIN && (
-  <Link href="/admin">
-    <Button variant="ghost" size="sm">
-      <Settings className="h-4 w-4" />
-      Admin
-    </Button>
-  </Link>
-)}
-```
-
-### 4.2 Pagina de Gestao de Usuarios
+### 3.6 Gestao de Usuarios
 
 **Rota:** `/admin/users`
 
-**Requisitos Funcionais:**
+**Funcionalidades:**
+- Estatisticas gerais:
+  - Total de usuarios
+  - Total de admins
+  - Usuarios ativos (com apostas)
+  - Novos usuarios no mes
+- Listagem com paginacao
+- Filtro por role (todos, usuarios, admins)
+- Busca por nome ou email
+- Acoes por usuario:
+  - Ver detalhes
+  - Ajustar saldo (creditar/debitar)
+  - Toggle admin (promover/rebaixar)
 
-1. **Listagem de usuarios**
-   - Tabela com: nome, email, role, saldo, data de cadastro
-   - Filtros: por role (user/admin), por status (ativo/inativo)
-   - Busca por nome ou email
-   - Paginacao
-
-2. **Acoes por usuario**
-   - Ver detalhes (apostas, historico, transacoes)
-   - Editar role (promover a admin / rebaixar a user)
-   - Ajustar saldo (creditar/debitar manualmente)
-   - Desativar/reativar conta
-
-3. **Estatisticas**
-   - Total de usuarios
-   - Usuarios ativos (com apostas nos ultimos 30 dias)
-   - Novos usuarios (mes atual)
-   - Distribuicao por role
-
-**Endpoints necessarios (backend):**
-
-| Metodo | Endpoint | Descricao |
-|--------|----------|-----------|
-| GET | `/api/admin/users` | Listar usuarios (paginado, filtros) |
-| GET | `/api/admin/users/:id` | Detalhes do usuario |
-| PATCH | `/api/admin/users/:id` | Atualizar usuario (role, status) |
-| POST | `/api/admin/users/:id/adjust-balance` | Ajustar saldo |
-| GET | `/api/admin/users/stats` | Estatisticas de usuarios |
-
-**Arquivos a criar:**
+**Arquivos:**
 - `apps/web/src/app/admin/users/page.tsx`
+- `apps/web/src/hooks/use-admin-users.ts`
+
+### 3.7 Detalhes do Usuario
+
+**Rota:** `/admin/users/[id]`
+
+**Funcionalidades:**
+- Informacoes do usuario (nome, email, role)
+- Estatisticas:
+  - Saldo atual
+  - Total apostado
+  - Total ganho
+  - Membro desde
+- Informacoes financeiras:
+  - Total depositado
+  - Total sacado
+  - Lucro/prejuizo
+- Historico de apostas com status
+- Acoes:
+  - Ajustar saldo
+  - Toggle admin
+
+**Arquivos:**
 - `apps/web/src/app/admin/users/[id]/page.tsx`
-- `apps/api/src/modules/admin/dto/user-filters.dto.ts`
-- `apps/api/src/modules/admin/dto/adjust-balance.dto.ts`
 
-**Arquivos a modificar:**
-- `apps/api/src/modules/admin/admin.controller.ts`
-- `apps/api/src/modules/admin/admin.module.ts`
-- `apps/api/src/modules/users/users.service.ts`
-- `apps/web/src/hooks/use-admin.ts`
-- `apps/web/src/lib/api.ts`
-
-### 4.3 Pagina de Configuracoes
+### 3.8 Configuracoes
 
 **Rota:** `/admin/settings`
 
-**Requisitos Funcionais:**
+**Funcionalidades (MVP - Read-only):**
+- Configuracoes da plataforma:
+  - Taxa de rake (3%)
+  - Valor minimo de aposta
+  - Valor maximo de aposta
+  - Moeda (BRL)
+- Configuracoes de pagamento:
+  - PIX habilitado
+  - Crypto habilitado
+  - Deposito minimo
+  - Saque minimo
+- Configuracoes de seguranca:
+  - Tempo de sessao
+  - Tentativas de login
+  - Tempo de bloqueio
+- Status de manutencao
 
-1. **Configuracoes da plataforma**
-   - Taxa de rake (porcentagem, padrao 3%)
-   - Valor minimo de aposta
-   - Valor maximo de aposta
-   - Moeda padrao (BRL, USD)
+**Nota:** Edicao de configuracoes via interface sera implementada em versao futura. Atualmente gerenciado via variaveis de ambiente.
 
-2. **Configuracoes de pagamento**
-   - PIX habilitado (sim/nao)
-   - Crypto habilitado (sim/nao)
-   - Enderecos de carteira (Ethereum, Bitcoin)
-
-3. **Configuracoes de seguranca**
-   - Tempo de sessao (minutos)
-   - Tentativas de login antes de bloquear
-   - Tempo de bloqueio
-
-4. **Manutencao**
-   - Modo de manutencao (on/off)
-   - Mensagem de manutencao
-
-**Abordagem sugerida:**
-
-Para MVP, implementar apenas visualizacao das configuracoes atuais (hardcoded ou env vars). Edicao pode ser fase 2.
-
-**Arquivos a criar:**
+**Arquivos:**
 - `apps/web/src/app/admin/settings/page.tsx`
-- `apps/api/src/modules/settings/settings.module.ts`
-- `apps/api/src/modules/settings/settings.service.ts`
-- `apps/api/src/modules/settings/settings.controller.ts`
-- `apps/api/src/modules/settings/schemas/settings.schema.ts`
 
 ---
 
-## 5. Priorizacao
-
-### Prioridade Alta (Critico)
-1. **Link de acesso admin** - Usuarios admin nao conseguem acessar a area existente
-2. **Remover links quebrados** - Remover "Usuarios" e "Configuracoes" da sidebar ate implementacao
-
-### Prioridade Media (Importante)
-3. **Pagina de Gestao de Usuarios** - Necessario para operacao da plataforma
-4. **Ajuste de saldo manual** - Necessario para suporte ao cliente
-
-### Prioridade Baixa (Nice to have)
-5. **Pagina de Configuracoes** - Pode usar env vars por enquanto
-6. **Logs de auditoria** - Registrar acoes de admin
-
----
-
-## 6. Estimativa de Esforco
-
-| Item | Complexidade | Arquivos |
-|------|--------------|----------|
-| Link acesso admin | Baixa | 2 |
-| Remover links quebrados | Baixa | 1 |
-| Pagina usuarios (frontend) | Alta | 3 |
-| Endpoints usuarios (backend) | Alta | 4 |
-| Pagina configuracoes | Media | 4 |
-
----
-
-## 7. Consideracoes de Seguranca
-
-1. **Todas as rotas admin** devem ser protegidas por `RolesGuard`
-2. **Acoes sensiveis** (promover admin, ajustar saldo) devem gerar log de auditoria
-3. **Validacao de entrada** em todos os endpoints
-4. **Rate limiting** em endpoints de gestao de usuarios
-5. **Confirmacao** antes de acoes irreversiveis (promover admin, ajustar saldo negativo)
-
----
-
-## 8. Padroes de UI/UX
-
-Seguir padroes existentes:
-- Tailwind CSS com tema escuro
-- Componentes de `@/components/ui/`
-- Cards com `rounded-2xl border border-border bg-card`
-- Botoes primarios verdes, destructive vermelhos
-- Modais para confirmacao de acoes
-- Feedback visual de loading (Loader2 animate-spin)
-- Mensagens de erro em card com bg-destructive/10
-- Texto em portugues
-
----
-
-## 9. Proximos Passos
-
-1. [ ] Adicionar link de acesso admin no header/sidebar
-2. [ ] Remover temporariamente links quebrados da sidebar admin
-3. [ ] Implementar endpoints de gestao de usuarios no backend
-4. [ ] Criar pagina de listagem de usuarios
-5. [ ] Criar pagina de detalhes do usuario
-6. [ ] Implementar ajuste de saldo manual
-7. [ ] (Opcional) Implementar pagina de configuracoes
-
----
-
-## Apendice A: Estrutura de Arquivos Admin
+## 4. Estrutura de Arquivos Admin
 
 ```
 apps/web/src/app/admin/
@@ -384,29 +313,63 @@ apps/web/src/app/admin/
 │       └── page.tsx     # Editar evento
 ├── revenue/
 │   └── page.tsx         # Receita/Rake
-├── users/               # A CRIAR
+├── users/
 │   ├── page.tsx         # Listagem
 │   └── [id]/
 │       └── page.tsx     # Detalhes
-└── settings/            # A CRIAR
+└── settings/
     └── page.tsx         # Configuracoes
+
+apps/web/src/hooks/
+├── use-admin.ts         # Store para eventos e dashboard
+├── use-admin-users.ts   # Store para gestao de usuarios
+└── use-revenue.ts       # Store para receita
 ```
 
-## Apendice B: Endpoints Admin Completos
+---
 
-```
-GET    /api/admin/dashboard         # Estatisticas
-GET    /api/admin/events            # Listar eventos
-POST   /api/admin/events            # Criar evento
-PATCH  /api/admin/events/:id        # Atualizar evento
-POST   /api/admin/events/:id/lock   # Bloquear
-POST   /api/admin/events/:id/resolve# Resolver
-POST   /api/admin/events/:id/cancel # Cancelar
-GET    /api/admin/users             # Listar usuarios (A CRIAR)
-GET    /api/admin/users/:id         # Detalhes usuario (A CRIAR)
-PATCH  /api/admin/users/:id         # Atualizar usuario (A CRIAR)
-POST   /api/admin/users/:id/adjust  # Ajustar saldo (A CRIAR)
-GET    /api/admin/users/stats       # Stats usuarios (A CRIAR)
-GET    /api/admin/settings          # Configuracoes (A CRIAR)
-PATCH  /api/admin/settings          # Atualizar config (A CRIAR)
-```
+## 5. Consideracoes de Seguranca
+
+1. **Todas as rotas admin** sao protegidas por `RolesGuard`
+2. **Validacao de entrada** em todos os endpoints via DTOs
+3. **Rate limiting** configurado nos endpoints
+4. **Confirmacao** antes de acoes sensiveis (modais de confirmacao)
+
+---
+
+## 6. Padroes de UI/UX
+
+Padroes seguidos:
+- Tailwind CSS com tema escuro
+- Componentes de `@/components/ui/`
+- Cards com `rounded-2xl border border-border bg-card`
+- Botoes primarios verdes, destructive vermelhos
+- Modais para confirmacao de acoes
+- Feedback visual de loading (Loader2 animate-spin)
+- Mensagens de erro em card com bg-destructive/10
+- Texto em portugues
+
+---
+
+## 7. Proximas Melhorias (Roadmap)
+
+- [ ] Edicao de configuracoes via interface
+- [ ] Logs de auditoria para acoes de admin
+- [ ] Dashboard com graficos e tendencias
+- [ ] Exportacao de dados (CSV/Excel)
+- [ ] Sistema de notificacoes para admins
+
+---
+
+## Historico de Implementacao
+
+| Data | Funcionalidade | Status |
+|------|----------------|--------|
+| 2026-03 | Gestao de Usuarios (listagem, detalhes, toggle role, ajuste de saldo) | Implementado |
+| 2026-03 | Pagina de Configuracoes (MVP read-only) | Implementado |
+| 2026-03 | Link de acesso admin no Header | Implementado |
+| 2026-02 | Dashboard, Eventos, Receita | Implementado |
+
+---
+
+*Documento atualizado em Marco de 2026*

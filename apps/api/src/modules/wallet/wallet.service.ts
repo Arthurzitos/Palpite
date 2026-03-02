@@ -5,6 +5,7 @@ import { Connection } from 'mongoose';
 import { UsersService } from '../users/users.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { NowPaymentsService, NowPaymentsWebhookPayload } from './services/nowpayments.service';
+import { EmailService } from '../email/email.service';
 import { TransactionType, TransactionStatus } from '@prediction-market/shared';
 
 export interface DepositCryptoResult {
@@ -22,8 +23,14 @@ export interface DepositFiatResult {
 
 export interface WithdrawResult {
   transactionId: string;
-  recordId: string;
   status: string;
+  message: string;
+}
+
+export interface AvailableBalanceResult {
+  balance: number;
+  availableBalance: number;
+  pendingWithdrawals: number;
 }
 
 @Injectable()
@@ -37,6 +44,7 @@ export class WalletService {
     private usersService: UsersService,
     private transactionsService: TransactionsService,
     private nowPaymentsService: NowPaymentsService,
+    private emailService: EmailService,
     private configService: ConfigService,
   ) {
     this.minDepositAmount = this.configService.get<number>('platform.minDepositAmount') || 5;
@@ -76,10 +84,7 @@ export class WalletService {
         `Deposit $${amount}`,
       );
 
-      await this.transactionsService.updateMetadata(
-        transaction._id.toString(),
-        { invoiceId },
-      );
+      await this.transactionsService.updateMetadata(transaction._id.toString(), { invoiceId });
 
       return {
         checkoutUrl: invoiceUrl,
@@ -101,7 +106,9 @@ export class WalletService {
     }
 
     if (amount > 3500) {
-      throw new BadRequestException('Maximum fiat deposit is $3500 (KYC limit). Use crypto for larger amounts.');
+      throw new BadRequestException(
+        'Maximum fiat deposit is $3500 (KYC limit). Use crypto for larger amounts.',
+      );
     }
 
     const user = await this.usersService.findById(userId);
@@ -123,10 +130,7 @@ export class WalletService {
         `Deposit $${amount}`,
       );
 
-      await this.transactionsService.updateMetadata(
-        transaction._id.toString(),
-        { invoiceId },
-      );
+      await this.transactionsService.updateMetadata(transaction._id.toString(), { invoiceId });
 
       const widgetConfig = this.nowPaymentsService.getWidgetConfig(
         amount,
@@ -158,64 +162,123 @@ export class WalletService {
       throw new BadRequestException(`Minimum withdrawal amount is $${this.minWithdrawalAmount}`);
     }
 
-    const session = await this.connection.startSession();
-    session.startTransaction();
+    const user = await this.usersService.findById(userId);
 
-    try {
-      const user = await this.usersService.findById(userId);
+    const pendingAmount = await this.transactionsService.getSumPendingWithdrawals(userId);
+    const availableBalance = user.balance - pendingAmount;
 
-      if (user.balance < amount) {
-        throw new BadRequestException('Insufficient balance');
-      }
+    if (availableBalance < amount) {
+      throw new BadRequestException(
+        `Insufficient available balance. Available: $${availableBalance.toFixed(2)}`,
+      );
+    }
 
-      const updatedUser = await this.usersService.updateBalance(userId, amount, 'subtract');
+    const isDuplicate = await this.transactionsService.checkDuplicateWithdrawal(
+      userId,
+      amount,
+      address,
+      network,
+    );
 
-      if (!updatedUser) {
-        throw new BadRequestException('Insufficient balance');
-      }
+    if (isDuplicate) {
+      throw new BadRequestException(
+        'A pending withdrawal request with the same amount, address, and network already exists',
+      );
+    }
 
-      const transaction = await this.transactionsService.create({
-        userId,
-        type: TransactionType.WITHDRAWAL,
-        amount,
-        balanceBefore: user.balance,
-        balanceAfter: user.balance - amount,
-        status: TransactionStatus.PENDING,
-        metadata: {
-          provider: 'nowpayments',
-          address,
-          network,
-        },
-      });
-
-      const payoutResponse = await this.nowPaymentsService.createPayout(
-        amount,
+    const transaction = await this.transactionsService.create({
+      userId,
+      type: TransactionType.WITHDRAWAL,
+      amount,
+      balanceBefore: user.balance,
+      balanceAfter: user.balance,
+      status: TransactionStatus.PENDING_APPROVAL,
+      metadata: {
+        provider: 'nowpayments',
         address,
         network,
-        transaction._id.toString(),
-      );
+      },
+    });
 
-      await this.usersService.incrementStats(userId, 'totalWithdrawn', amount);
+    this.logger.log(
+      `Withdrawal request created: user=${userId}, amount=${amount}, txId=${transaction._id}`,
+    );
 
-      await session.commitTransaction();
+    // Send email notifications (non-blocking)
+    this.emailService
+      .sendWithdrawalRequested(user.email, amount)
+      .catch((err) => this.logger.error(`Failed to send withdrawal request email: ${err}`));
 
-      return {
-        transactionId: transaction._id.toString(),
-        recordId: payoutResponse.id,
-        status: 'pending',
-      };
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
-    }
+    this.emailService
+      .sendAdminNewWithdrawal(amount, user.username)
+      .catch((err) => this.logger.error(`Failed to send admin notification email: ${err}`));
+
+    return {
+      transactionId: transaction._id.toString(),
+      status: 'pending_approval',
+      message:
+        'Your withdrawal request has been submitted and is awaiting approval. You will be notified once it is processed. Average processing time: 24 hours.',
+    };
   }
 
-  async handleNowPaymentsWebhook(
-    body: Record<string, unknown>,
-    signature: string,
-  ): Promise<void> {
+  async getAvailableBalance(userId: string): Promise<AvailableBalanceResult> {
+    const user = await this.usersService.findById(userId);
+    const pendingWithdrawals = await this.transactionsService.getSumPendingWithdrawals(userId);
+
+    return {
+      balance: user.balance,
+      availableBalance: user.balance - pendingWithdrawals,
+      pendingWithdrawals,
+    };
+  }
+
+  async getWithdrawals(userId: string, status?: TransactionStatus, page = 1, limit = 20) {
+    return this.transactionsService.findWithdrawalsByUser({
+      userId,
+      status,
+      page,
+      limit,
+    });
+  }
+
+  async cancelWithdrawal(userId: string, transactionId: string): Promise<void> {
+    const transaction = await this.transactionsService.findById(transactionId);
+
+    if (!transaction) {
+      throw new BadRequestException('Withdrawal not found');
+    }
+
+    if (transaction.userId.toString() !== userId) {
+      throw new BadRequestException('Withdrawal not found');
+    }
+
+    if (transaction.type !== TransactionType.WITHDRAWAL) {
+      throw new BadRequestException('Invalid transaction type');
+    }
+
+    if (transaction.status !== TransactionStatus.PENDING_APPROVAL) {
+      throw new BadRequestException(
+        'Only pending withdrawals can be cancelled. Current status: ' + transaction.status,
+      );
+    }
+
+    const user = await this.usersService.findById(userId);
+
+    await this.transactionsService.updateWithdrawalReview(transactionId, {
+      status: TransactionStatus.CANCELLED,
+      reviewedBy: userId,
+      reviewNotes: 'Cancelled by user',
+    });
+
+    this.logger.log(`Withdrawal cancelled by user: txId=${transactionId}, user=${userId}`);
+
+    // Send email notification (non-blocking)
+    this.emailService
+      .sendWithdrawalCancelled(user.email, transaction.amount)
+      .catch((err) => this.logger.error(`Failed to send cancellation email: ${err}`));
+  }
+
+  async handleNowPaymentsWebhook(body: Record<string, unknown>, signature: string): Promise<void> {
     if (!this.nowPaymentsService.verifyWebhookSignature(body, signature)) {
       throw new UnauthorizedException('Invalid webhook signature');
     }
@@ -227,9 +290,7 @@ export class WalletService {
       return;
     }
 
-    const isAlreadyProcessed = await this.transactionsService.checkIdempotency(
-      payload.order_id,
-    );
+    const isAlreadyProcessed = await this.transactionsService.checkIdempotency(payload.order_id);
 
     if (isAlreadyProcessed) {
       this.logger.log(`Webhook already processed for order ${payload.order_id}`);

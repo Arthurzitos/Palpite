@@ -26,10 +26,7 @@ export class OddsService {
    * Calculate potential payout for a bet
    * This is an estimate based on current odds
    */
-  calculatePotentialPayout(
-    betAmount: number,
-    currentOdds: number,
-  ): number {
+  calculatePotentialPayout(betAmount: number, currentOdds: number): number {
     if (currentOdds === 0) return betAmount;
     return Math.round(betAmount * currentOdds * 100) / 100;
   }
@@ -73,11 +70,7 @@ export class OddsService {
   /**
    * Simulate new odds after a hypothetical bet
    */
-  simulateOddsAfterBet(
-    currentTotalPool: number,
-    outcomePool: number,
-    betAmount: number,
-  ): number {
+  simulateOddsAfterBet(currentTotalPool: number, outcomePool: number, betAmount: number): number {
     const newTotalPool = currentTotalPool + betAmount;
     const newOutcomePool = outcomePool + betAmount;
     return this.calculateOdds(newTotalPool, newOutcomePool);

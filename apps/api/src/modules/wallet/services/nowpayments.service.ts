@@ -102,12 +102,17 @@ export class NowPaymentsService {
     this.ipnSecret = this.configService.get<string>('nowpayments.ipnSecret') || '';
     this.webhookUrl = this.configService.get<string>('nowpayments.webhookUrl') || '';
     this.payoutAddress = this.configService.get<string>('nowpayments.payoutAddress') || '';
-    this.payoutCurrency = this.configService.get<string>('nowpayments.payoutCurrency') || 'usdttrc20';
+    this.payoutCurrency =
+      this.configService.get<string>('nowpayments.payoutCurrency') || 'usdttrc20';
     this.payoutEmail = this.configService.get<string>('nowpayments.payoutEmail') || '';
     this.payoutPassword = this.configService.get<string>('nowpayments.payoutPassword') || '';
   }
 
-  private async makeRequest<T>(endpoint: string, method: 'GET' | 'POST', body?: Record<string, unknown>): Promise<T> {
+  private async makeRequest<T>(
+    endpoint: string,
+    method: 'GET' | 'POST',
+    body?: Record<string, unknown>,
+  ): Promise<T> {
     const headers: Record<string, string> = {
       'x-api-key': this.apiKey,
       'Content-Type': 'application/json',
@@ -210,9 +215,7 @@ export class NowPaymentsService {
     }
     const sortedBodyString = JSON.stringify(sortedBody);
 
-    const expectedSig = createHmac('sha512', this.ipnSecret)
-      .update(sortedBodyString)
-      .digest('hex');
+    const expectedSig = createHmac('sha512', this.ipnSecret).update(sortedBodyString).digest('hex');
 
     if (expectedSig !== receivedSig) {
       this.logger.warn('Invalid NOWPayments webhook signature');
@@ -302,7 +305,7 @@ export class NowPaymentsService {
       method: 'POST',
       headers: {
         'x-api-key': this.apiKey,
-        'Authorization': `Bearer ${jwt}`,
+        Authorization: `Bearer ${jwt}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ withdrawals: [withdrawal] }),
@@ -327,7 +330,7 @@ export class NowPaymentsService {
       method: 'GET',
       headers: {
         'x-api-key': this.apiKey,
-        'Authorization': `Bearer ${jwt}`,
+        Authorization: `Bearer ${jwt}`,
       },
     });
 
@@ -347,7 +350,7 @@ export class NowPaymentsService {
       method: 'GET',
       headers: {
         'x-api-key': this.apiKey,
-        'Authorization': `Bearer ${jwt}`,
+        Authorization: `Bearer ${jwt}`,
       },
     });
 

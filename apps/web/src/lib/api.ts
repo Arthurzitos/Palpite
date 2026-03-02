@@ -274,8 +274,14 @@ export interface DepositFiatResult {
 
 export interface WithdrawResult {
   transactionId: string;
-  recordId: string;
   status: string;
+  message: string;
+}
+
+export interface AvailableBalanceResult {
+  balance: number;
+  availableBalance: number;
+  pendingWithdrawals: number;
 }
 
 export interface Transaction {
@@ -287,7 +293,11 @@ export interface Transaction {
   balanceAfter: number;
   reference?: string;
   metadata?: Record<string, unknown>;
-  status: 'pending' | 'completed' | 'failed';
+  status: 'pending' | 'pending_approval' | 'approved' | 'rejected' | 'cancelled' | 'completed' | 'failed';
+  reviewedBy?: string;
+  reviewedAt?: string;
+  reviewNotes?: string;
+  rejectionReason?: string;
   createdAt: string;
 }
 
@@ -305,6 +315,11 @@ export const walletApi = {
     return response.data;
   },
 
+  getAvailableBalance: async (): Promise<AvailableBalanceResult> => {
+    const response = await api.get('/wallet/available-balance');
+    return response.data;
+  },
+
   depositCrypto: async (amount: number): Promise<DepositCryptoResult> => {
     const response = await api.post('/wallet/deposit/crypto', { amount });
     return response.data;
@@ -317,6 +332,20 @@ export const walletApi = {
 
   withdraw: async (data: { amount: number; address: string; network: string }): Promise<WithdrawResult> => {
     const response = await api.post('/wallet/withdraw', data);
+    return response.data;
+  },
+
+  getWithdrawals: async (status?: string, page = 1, limit = 20): Promise<{ withdrawals: Transaction[]; pagination: { total: number; page: number; limit: number; pages: number } }> => {
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+    const response = await api.get(`/wallet/withdrawals?${params.toString()}`);
+    return response.data;
+  },
+
+  cancelWithdrawal: async (id: string): Promise<{ success: boolean; message: string }> => {
+    const response = await api.delete(`/wallet/withdrawals/${id}`);
     return response.data;
   },
 
@@ -566,6 +595,105 @@ export const revenueApi = {
 
   withdrawRevenue: async (amount: number, withdrawalAddress: string): Promise<WithdrawRevenueResult> => {
     const response = await api.post('/admin/revenue/withdraw', { amount, withdrawalAddress });
+    return response.data;
+  },
+};
+
+// Admin Withdrawals API
+export interface AdminWithdrawal {
+  _id: string;
+  userId: string;
+  user: {
+    _id: string;
+    email: string;
+    username: string;
+  };
+  amount: number;
+  address: string;
+  network: string;
+  status: string;
+  userContext: {
+    balance: number;
+    totalDeposited: number;
+    totalWithdrawn: number;
+    accountAgeDays: number;
+    totalBets: number;
+  };
+  reviewedBy?: {
+    _id: string;
+    email: string;
+  };
+  reviewedAt?: string;
+  reviewNotes?: string;
+  rejectionReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminWithdrawalStats {
+  pendingCount: number;
+  pendingAmount: number;
+  todayApproved: number;
+  todayApprovedAmount: number;
+  todayRejected: number;
+  todayRejectedAmount: number;
+}
+
+export interface AdminWithdrawalFilters {
+  status?: string;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  minAmount?: number;
+  maxAmount?: number;
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedAdminWithdrawals {
+  withdrawals: AdminWithdrawal[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+  stats: AdminWithdrawalStats;
+}
+
+export const adminWithdrawalsApi = {
+  getAll: async (filters?: AdminWithdrawalFilters): Promise<PaginatedAdminWithdrawals> => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom);
+    if (filters?.dateTo) params.append('dateTo', filters.dateTo);
+    if (filters?.minAmount) params.append('minAmount', filters.minAmount.toString());
+    if (filters?.maxAmount) params.append('maxAmount', filters.maxAmount.toString());
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    const response = await api.get(`/admin/withdrawals?${params.toString()}`);
+    return response.data;
+  },
+
+  getStats: async (): Promise<AdminWithdrawalStats> => {
+    const response = await api.get('/admin/withdrawals/stats');
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<AdminWithdrawal> => {
+    const response = await api.get(`/admin/withdrawals/${id}`);
+    return response.data;
+  },
+
+  approve: async (id: string, notes?: string): Promise<AdminWithdrawal> => {
+    const response = await api.post(`/admin/withdrawals/${id}/approve`, { notes });
+    return response.data;
+  },
+
+  reject: async (id: string, reason: string, notes?: string): Promise<AdminWithdrawal> => {
+    const response = await api.post(`/admin/withdrawals/${id}/reject`, { reason, notes });
     return response.data;
   },
 };

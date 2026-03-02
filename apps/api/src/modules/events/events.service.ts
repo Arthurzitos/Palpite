@@ -8,12 +8,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types, FilterQuery } from 'mongoose';
 import { Event, EventDocument } from './schemas/event.schema';
 import { OddsService } from './services/odds.service';
-import {
-  CreateEventDto,
-  UpdateEventDto,
-  ResolveEventDto,
-  EventFiltersDto,
-} from './dto';
+import { CreateEventDto, UpdateEventDto, ResolveEventDto, EventFiltersDto } from './dto';
 import { EventStatus } from '@prediction-market/shared';
 
 export interface PaginatedEvents {
@@ -36,10 +31,7 @@ export class EventsService {
     private oddsService: OddsService,
   ) {}
 
-  async create(
-    createEventDto: CreateEventDto,
-    userId: string,
-  ): Promise<EventDocument> {
+  async create(createEventDto: CreateEventDto, userId: string): Promise<EventDocument> {
     const closesAt = new Date(createEventDto.closesAt);
     if (closesAt <= new Date()) {
       throw new BadRequestException('Close date must be in the future');
@@ -56,9 +48,7 @@ export class EventsService {
     const event = new this.eventModel({
       ...createEventDto,
       outcomes,
-      startsAt: createEventDto.startsAt
-        ? new Date(createEventDto.startsAt)
-        : undefined,
+      startsAt: createEventDto.startsAt ? new Date(createEventDto.startsAt) : undefined,
       closesAt,
       createdBy: new Types.ObjectId(userId),
     });
@@ -104,12 +94,7 @@ export class EventsService {
     }
 
     const [events, total] = await Promise.all([
-      this.eventModel
-        .find(query)
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .exec(),
+      this.eventModel.find(query).sort(sort).skip(skip).limit(limit).exec(),
       this.eventModel.countDocuments(query).exec(),
     ]);
 
@@ -152,10 +137,7 @@ export class EventsService {
     return event;
   }
 
-  async update(
-    id: string,
-    updateEventDto: UpdateEventDto,
-  ): Promise<EventDocument> {
+  async update(id: string, updateEventDto: UpdateEventDto): Promise<EventDocument> {
     const event = await this.findById(id);
 
     if (event.status !== EventStatus.OPEN) {
@@ -177,9 +159,7 @@ export class EventsService {
       updateData.closesAt = new Date(updateEventDto.closesAt);
     }
 
-    const updated = await this.eventModel
-      .findByIdAndUpdate(id, updateData, { new: true })
-      .exec();
+    const updated = await this.eventModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
 
     if (!updated) {
       throw new NotFoundException('Event not found');
@@ -202,10 +182,7 @@ export class EventsService {
   async cancelEvent(id: string): Promise<EventDocument> {
     const event = await this.findById(id);
 
-    if (
-      event.status === EventStatus.RESOLVED ||
-      event.status === EventStatus.CANCELLED
-    ) {
+    if (event.status === EventStatus.RESOLVED || event.status === EventStatus.CANCELLED) {
       throw new ConflictException('Event is already resolved or cancelled');
     }
 
@@ -249,10 +226,7 @@ export class EventsService {
     }
 
     // Recalculate odds for all outcomes
-    const updatedOutcomes = this.oddsService.recalculateAllOdds(
-      event.outcomes,
-      event.totalPool,
-    );
+    const updatedOutcomes = this.oddsService.recalculateAllOdds(event.outcomes, event.totalPool);
 
     event.outcomes = updatedOutcomes as typeof event.outcomes;
     return event.save();
@@ -260,9 +234,7 @@ export class EventsService {
 
   async getOutcome(eventId: string, outcomeId: string) {
     const event = await this.findById(eventId);
-    const outcome = event.outcomes.find(
-      (o) => o._id.toString() === outcomeId,
-    );
+    const outcome = event.outcomes.find((o) => o._id.toString() === outcomeId);
 
     if (!outcome) {
       throw new NotFoundException('Outcome not found');
@@ -271,19 +243,14 @@ export class EventsService {
     return { event, outcome };
   }
 
-  async markAsResolved(
-    eventId: string,
-    resolveDto: ResolveEventDto,
-  ): Promise<EventDocument> {
+  async markAsResolved(eventId: string, resolveDto: ResolveEventDto): Promise<EventDocument> {
     const event = await this.findById(eventId);
 
     if (event.status !== EventStatus.OPEN && event.status !== EventStatus.LOCKED) {
       throw new ConflictException('Event cannot be resolved in current state');
     }
 
-    const outcomeExists = event.outcomes.some(
-      (o) => o._id.toString() === resolveDto.outcomeId,
-    );
+    const outcomeExists = event.outcomes.some((o) => o._id.toString() === resolveDto.outcomeId);
 
     if (!outcomeExists) {
       throw new BadRequestException('Invalid outcome ID');
@@ -301,9 +268,7 @@ export class EventsService {
     const [totalEvents, openEvents, totalVolume] = await Promise.all([
       this.eventModel.countDocuments().exec(),
       this.eventModel.countDocuments({ status: EventStatus.OPEN }).exec(),
-      this.eventModel.aggregate([
-        { $group: { _id: null, total: { $sum: '$totalPool' } } },
-      ]),
+      this.eventModel.aggregate([{ $group: { _id: null, total: { $sum: '$totalPool' } } }]),
     ]);
 
     return {

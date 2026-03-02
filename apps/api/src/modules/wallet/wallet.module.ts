@@ -9,11 +9,7 @@ import { TransactionsModule } from '../transactions/transactions.module';
 @Module({
   imports: [UsersModule, TransactionsModule],
   controllers: [WalletController],
-  providers: [
-    WalletService,
-    NowPaymentsService,
-    PaymentPollingService,
-  ],
+  providers: [WalletService, NowPaymentsService, PaymentPollingService],
   exports: [WalletService, NowPaymentsService],
 })
 export class WalletModule {}

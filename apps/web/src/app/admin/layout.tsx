@@ -12,6 +12,7 @@ import {
   LogOut,
   ChevronLeft,
   DollarSign,
+  ArrowUpRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
@@ -32,6 +33,11 @@ const adminNavItems = [
     label: 'Receita',
     href: '/admin/revenue',
     icon: DollarSign,
+  },
+  {
+    label: 'Saques',
+    href: '/admin/withdrawals',
+    icon: ArrowUpRight,
   },
   {
     label: 'Usuários',

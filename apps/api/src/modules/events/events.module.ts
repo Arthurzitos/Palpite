@@ -6,9 +6,7 @@ import { OddsService } from './services/odds.service';
 import { Event, EventSchema } from './schemas/event.schema';
 
 @Module({
-  imports: [
-    MongooseModule.forFeature([{ name: Event.name, schema: EventSchema }]),
-  ],
+  imports: [MongooseModule.forFeature([{ name: Event.name, schema: EventSchema }])],
   controllers: [EventsController],
   providers: [EventsService, OddsService],
   exports: [EventsService, OddsService],

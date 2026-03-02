@@ -19,7 +19,8 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const logger = app.get(LoggerService);
   const port = configService.get<number>('port', 3001);
-  const frontendUrl = process.env.FRONTEND_URL || configService.get<string>('frontendUrl') || 'http://localhost:3000';
+  const frontendUrl =
+    process.env.FRONTEND_URL || configService.get<string>('frontendUrl') || 'http://localhost:3000';
 
   // Use custom logger
   app.useLogger(logger);

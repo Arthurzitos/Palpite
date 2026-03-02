@@ -63,69 +63,105 @@ export class LoggerService implements NestLoggerService {
 
   // Extended methods for structured logging
   logRequest(method: string, url: string, statusCode: number, duration: number, userId?: string) {
-    this.logger.info({
-      type: 'request',
-      method,
-      url,
-      statusCode,
-      duration,
-      userId,
-    }, `${method} ${url} ${statusCode} ${duration}ms`);
+    this.logger.info(
+      {
+        type: 'request',
+        method,
+        url,
+        statusCode,
+        duration,
+        userId,
+      },
+      `${method} ${url} ${statusCode} ${duration}ms`,
+    );
   }
 
-  logTransaction(type: string, amount: number, userId: string, reference?: string, metadata?: Record<string, unknown>) {
-    this.logger.info({
-      type: 'transaction',
-      transactionType: type,
-      amount,
-      userId,
-      reference,
-      ...metadata,
-    }, `Transaction: ${type} $${amount} for user ${userId}`);
+  logTransaction(
+    type: string,
+    amount: number,
+    userId: string,
+    reference?: string,
+    metadata?: Record<string, unknown>,
+  ) {
+    this.logger.info(
+      {
+        type: 'transaction',
+        transactionType: type,
+        amount,
+        userId,
+        reference,
+        ...metadata,
+      },
+      `Transaction: ${type} $${amount} for user ${userId}`,
+    );
   }
 
-  logWebhook(provider: string, status: 'received' | 'processed' | 'failed', reference?: string, error?: string) {
+  logWebhook(
+    provider: string,
+    status: 'received' | 'processed' | 'failed',
+    reference?: string,
+    error?: string,
+  ) {
     const level = status === 'failed' ? 'error' : 'info';
-    this.logger[level]({
-      type: 'webhook',
-      provider,
-      status,
-      reference,
-      error,
-    }, `Webhook ${provider}: ${status}${reference ? ` (ref: ${reference})` : ''}`);
+    this.logger[level](
+      {
+        type: 'webhook',
+        provider,
+        status,
+        reference,
+        error,
+      },
+      `Webhook ${provider}: ${status}${reference ? ` (ref: ${reference})` : ''}`,
+    );
   }
 
-  logBet(action: string, betId: string, userId: string, eventId: string, amount: number, metadata?: Record<string, unknown>) {
-    this.logger.info({
-      type: 'bet',
-      action,
-      betId,
-      userId,
-      eventId,
-      amount,
-      ...metadata,
-    }, `Bet ${action}: $${amount} on event ${eventId} by user ${userId}`);
+  logBet(
+    action: string,
+    betId: string,
+    userId: string,
+    eventId: string,
+    amount: number,
+    metadata?: Record<string, unknown>,
+  ) {
+    this.logger.info(
+      {
+        type: 'bet',
+        action,
+        betId,
+        userId,
+        eventId,
+        amount,
+        ...metadata,
+      },
+      `Bet ${action}: $${amount} on event ${eventId} by user ${userId}`,
+    );
   }
 
   logSettlement(eventId: string, outcomeId: string, totalPayout: number, winnersCount: number) {
-    this.logger.info({
-      type: 'settlement',
-      eventId,
-      outcomeId,
-      totalPayout,
-      winnersCount,
-    }, `Settlement: Event ${eventId} resolved, $${totalPayout} paid to ${winnersCount} winners`);
+    this.logger.info(
+      {
+        type: 'settlement',
+        eventId,
+        outcomeId,
+        totalPayout,
+        winnersCount,
+      },
+      `Settlement: Event ${eventId} resolved, $${totalPayout} paid to ${winnersCount} winners`,
+    );
   }
 
   logAuth(action: string, userId: string, success: boolean, metadata?: Record<string, unknown>) {
     const level = success ? 'info' : 'warn';
-    this.logger[level]({
-      type: 'auth',
-      action,
-      userId,
-      success,
-      ...metadata,
-    }, `Auth ${action}: ${success ? 'success' : 'failed'} for ${userId}`);
+    this.logger[level](
+      {
+        type: 'auth',
+        action,
+        userId,
+        success,
+        ...metadata,
+      },
+      `Auth ${action}: ${success ? 'success' : 'failed'} for ${userId}`,
+    );
   }
 
   // Get raw pino instance for advanced usage

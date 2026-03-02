@@ -57,14 +57,20 @@ export class PaymentPollingService {
 
         const paymentStatus = await this.nowPaymentsService.getPaymentStatus(invoiceId);
 
-        if (this.nowPaymentsService.isPaymentFinished(paymentStatus.payment_status as NowPaymentsStatus)) {
+        if (
+          this.nowPaymentsService.isPaymentFinished(
+            paymentStatus.payment_status as NowPaymentsStatus,
+          )
+        ) {
           await this.processSuccessfulDeposit(
             transaction.userId.toString(),
             transaction._id.toString(),
             paymentStatus.price_amount,
           );
           this.logger.log(`Processed pending NOWPayments deposit: ${transaction._id}`);
-        } else if (this.nowPaymentsService.isPaymentFailed(paymentStatus.payment_status as NowPaymentsStatus)) {
+        } else if (
+          this.nowPaymentsService.isPaymentFailed(paymentStatus.payment_status as NowPaymentsStatus)
+        ) {
           await this.transactionsService.markAsFailed(
             transaction._id.toString(),
             `Payment ${paymentStatus.payment_status}`,

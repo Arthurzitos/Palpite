@@ -1,10 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
-import {
-  HealthCheck,
-  HealthCheckService,
-  MemoryHealthIndicator,
-} from '@nestjs/terminus';
+import { HealthCheck, HealthCheckService, MemoryHealthIndicator } from '@nestjs/terminus';
 import { Public } from '../../common/decorators';
 import { MongoHealthIndicator } from './indicators/mongo.health';
 

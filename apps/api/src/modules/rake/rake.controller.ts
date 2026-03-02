@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { RakeService } from './rake.service';
 import { WithdrawRevenueDto, RakeFiltersDto, RakeByPeriodDto } from './dto';
 import { JwtAuthGuard, RolesGuard } from '../../common/guards';

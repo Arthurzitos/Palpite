@@ -41,19 +41,14 @@ export class SettlementService {
     this.platformFeePercent = this.configService.get<number>('PLATFORM_FEE_PERCENT') || 3;
   }
 
-  async resolveEvent(
-    eventId: string,
-    resolveDto: ResolveEventDto,
-  ): Promise<SettlementResult> {
+  async resolveEvent(eventId: string, resolveDto: ResolveEventDto): Promise<SettlementResult> {
     const event = await this.eventsService.findById(eventId);
 
     if (event.status !== EventStatus.OPEN && event.status !== EventStatus.LOCKED) {
       throw new ConflictException('Event cannot be resolved in current state');
     }
 
-    const winningOutcome = event.outcomes.find(
-      (o) => o._id.toString() === resolveDto.outcomeId,
-    );
+    const winningOutcome = event.outcomes.find((o) => o._id.toString() === resolveDto.outcomeId);
 
     if (!winningOutcome) {
       throw new BadRequestException('Invalid winning outcome ID');
@@ -79,12 +74,8 @@ export class SettlementService {
     }
 
     // Check if anyone bet on the winner
-    const winningBets = bets.filter(
-      (b) => b.outcomeId.toString() === resolveDto.outcomeId,
-    );
-    const losingBets = bets.filter(
-      (b) => b.outcomeId.toString() !== resolveDto.outcomeId,
-    );
+    const winningBets = bets.filter((b) => b.outcomeId.toString() === resolveDto.outcomeId);
+    const losingBets = bets.filter((b) => b.outcomeId.toString() !== resolveDto.outcomeId);
 
     // Edge case: No one bet on the winner - refund everyone
     if (winningBets.length === 0 || winningOutcome.totalPool === 0) {
@@ -112,10 +103,7 @@ export class SettlementService {
 
     try {
       const totalPool = event.totalPool;
-      const platformFee = this.oddsService.calculatePlatformFee(
-        totalPool,
-        this.platformFeePercent,
-      );
+      const platformFee = this.oddsService.calculatePlatformFee(totalPool, this.platformFeePercent);
       const distributablePool = this.oddsService.calculateDistributablePool(
         totalPool,
         this.platformFeePercent,
@@ -136,12 +124,7 @@ export class SettlementService {
         );
 
         // Update bet status
-        await this.betsService.updateBetStatus(
-          bet._id.toString(),
-          BetStatus.WON,
-          payout,
-          session,
-        );
+        await this.betsService.updateBetStatus(bet._id.toString(), BetStatus.WON, payout, session);
 
         // Credit user balance
         const user = await this.usersService.findById(bet.userId.toString());
@@ -174,12 +157,7 @@ export class SettlementService {
 
       // Mark losers
       for (const bet of losingBets) {
-        await this.betsService.updateBetStatus(
-          bet._id.toString(),
-          BetStatus.LOST,
-          0,
-          session,
-        );
+        await this.betsService.updateBetStatus(bet._id.toString(), BetStatus.LOST, 0, session);
       }
 
       // Record platform rake

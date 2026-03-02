@@ -1,10 +1,4 @@
-import {
-  IsString,
-  IsEnum,
-  IsOptional,
-  IsDateString,
-  MinLength,
-} from 'class-validator';
+import { IsString, IsEnum, IsOptional, IsDateString, MinLength } from 'class-validator';
 import { EventCategory, EventStatus } from '@prediction-market/shared';
 
 export class UpdateEventDto {

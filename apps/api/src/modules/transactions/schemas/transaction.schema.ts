@@ -30,6 +30,18 @@ export class Transaction {
   @Prop({ type: String, enum: TransactionStatus, default: TransactionStatus.PENDING })
   status: TransactionStatus;
 
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  reviewedBy?: Types.ObjectId;
+
+  @Prop()
+  reviewedAt?: Date;
+
+  @Prop()
+  reviewNotes?: string;
+
+  @Prop()
+  rejectionReason?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,3 +51,4 @@ export const TransactionSchema = SchemaFactory.createForClass(Transaction);
 TransactionSchema.index({ userId: 1, createdAt: -1 });
 TransactionSchema.index({ reference: 1 });
 TransactionSchema.index({ status: 1 });
+TransactionSchema.index({ type: 1, status: 1, createdAt: -1 });

@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
 import { BetsService } from './bets.service';
 import { CreateBetDto, BetFiltersDto } from './dto';
 import { JwtAuthGuard } from '../../common/guards';
@@ -23,18 +16,12 @@ export class BetsController {
   constructor(private readonly betsService: BetsService) {}
 
   @Post()
-  async create(
-    @Body() createBetDto: CreateBetDto,
-    @CurrentUser() user: AuthUser,
-  ) {
+  async create(@Body() createBetDto: CreateBetDto, @CurrentUser() user: AuthUser) {
     return this.betsService.create(createBetDto, user.userId);
   }
 
   @Get('my')
-  async getMyBets(
-    @Query() filters: BetFiltersDto,
-    @CurrentUser() user: AuthUser,
-  ) {
+  async getMyBets(@Query() filters: BetFiltersDto, @CurrentUser() user: AuthUser) {
     return this.betsService.findByUser(user.userId, filters);
   }
 

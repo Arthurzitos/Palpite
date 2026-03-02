@@ -173,16 +173,22 @@ function NowPaymentsWidget({
 export default function WalletPage() {
   const {
     balance,
+    availableBalance,
     transactions,
+    pendingWithdrawals,
     isLoading,
     isDepositing,
     isWithdrawing,
+    isCancelling,
     error,
     fetchBalance,
+    fetchAvailableBalance,
     fetchTransactions,
+    fetchPendingWithdrawals,
     depositCrypto,
     depositFiat,
     withdraw,
+    cancelWithdrawal,
     clearError,
   } = useWallet();
 
@@ -199,8 +205,10 @@ export default function WalletPage() {
 
   useEffect(() => {
     fetchBalance();
+    fetchAvailableBalance();
     fetchTransactions();
-  }, [fetchBalance, fetchTransactions]);
+    fetchPendingWithdrawals();
+  }, [fetchBalance, fetchAvailableBalance, fetchTransactions, fetchPendingWithdrawals]);
 
   useEffect(() => {
     // Check for success/error query params
@@ -208,11 +216,13 @@ export default function WalletPage() {
     if (params.get('deposit') === 'success') {
       setSuccessMessage('Depósito processado com sucesso!');
       fetchBalance();
+      fetchAvailableBalance();
       fetchTransactions();
+      fetchPendingWithdrawals();
       // Clean URL
       window.history.replaceState({}, '', '/wallet');
     }
-  }, [fetchBalance, fetchTransactions]);
+  }, [fetchBalance, fetchAvailableBalance, fetchTransactions, fetchPendingWithdrawals]);
 
   const handleDepositCrypto = useCallback(async () => {
     const amountNum = parseFloat(amount);
@@ -257,7 +267,7 @@ export default function WalletPage() {
 
     try {
       await withdraw(amountNum, withdrawAddress, selectedNetwork);
-      setSuccessMessage('Saque solicitado com sucesso! Processando...');
+      setSuccessMessage('Saque solicitado com sucesso! Aguardando aprovação do administrador.');
       setViewMode('main');
       setAmount('');
       setWithdrawAddress('');
@@ -266,6 +276,15 @@ export default function WalletPage() {
     }
   }, [amount, withdrawAddress, selectedNetwork, withdraw]);
 
+  const handleCancelWithdrawal = useCallback(async (id: string) => {
+    try {
+      await cancelWithdrawal(id);
+      setSuccessMessage('Saque cancelado com sucesso!');
+    } catch {
+      // Error is handled in the store
+    }
+  }, [cancelWithdrawal]);
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -273,6 +292,8 @@ export default function WalletPage() {
   };
 
   const userBalance = balance?.balance ?? 0;
+  const userAvailableBalance = availableBalance?.availableBalance ?? userBalance;
+  const pendingWithdrawalsAmount = availableBalance?.pendingWithdrawals ?? 0;
   const totalDeposited = balance?.totalDeposited ?? 0;
   const totalWithdrawn = balance?.totalWithdrawn ?? 0;
 
@@ -322,6 +343,11 @@ export default function WalletPage() {
                 '$ ••••••'
               )}
             </p>
+            {pendingWithdrawalsAmount > 0 && showBalance && (
+              <p className="mt-1 text-sm text-yellow-500">
+                $ {pendingWithdrawalsAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} em saques pendentes
+              </p>
+            )}
           </div>
           {totalDeposited > 0 && (
             <div className="flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-1">
@@ -334,7 +360,15 @@ export default function WalletPage() {
         </div>
 
         {/* Balance Split */}
-        <div className="mt-6 grid grid-cols-2 gap-4">
+        <div className="mt-6 grid grid-cols-3 gap-4">
+          <div className="rounded-lg bg-secondary p-4">
+            <p className="text-xs text-muted-foreground">Disponível</p>
+            <p className="mt-1 text-xl font-semibold text-primary">
+              {showBalance
+                ? `$ ${userAvailableBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                : '$ ••••'}
+            </p>
+          </div>
           <div className="rounded-lg bg-secondary p-4">
             <p className="text-xs text-muted-foreground">Total depositado</p>
             <p className="mt-1 text-xl font-semibold">
@@ -654,12 +688,15 @@ export default function WalletPage() {
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.00"
                   min="10"
-                  max={userBalance}
+                  max={userAvailableBalance}
                   className="h-12 pl-8 text-xl font-semibold bg-secondary border-0"
                 />
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Disponível: ${userBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                Disponível: ${userAvailableBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                {pendingWithdrawalsAmount > 0 && (
+                  <span className="text-yellow-500"> (${pendingWithdrawalsAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} em saques pendentes)</span>
+                )}
               </p>
             </div>
 
@@ -696,6 +733,13 @@ export default function WalletPage() {
               </span>
             </div>
 
+            <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 p-3">
+              <Info className="h-4 w-4 text-yellow-500" />
+              <span className="text-sm text-yellow-500">
+                Saques passam por aprovação antes do processamento.
+              </span>
+            </div>
+
             <Button
               className="w-full h-12 bg-destructive text-base font-semibold hover:bg-destructive/90"
               onClick={handleWithdraw}
@@ -703,7 +747,7 @@ export default function WalletPage() {
                 isWithdrawing ||
                 !amount ||
                 parseFloat(amount) < 10 ||
-                parseFloat(amount) > userBalance ||
+                parseFloat(amount) > userAvailableBalance ||
                 !withdrawAddress
               }
             >
@@ -716,6 +760,61 @@ export default function WalletPage() {
                 `Sacar $${amount || '0'}`
               )}
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Pending Withdrawals */}
+      {pendingWithdrawals.length > 0 && (
+        <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/5 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertCircle className="h-5 w-5 text-yellow-500" />
+            <h3 className="font-semibold text-yellow-500">Saques Pendentes</h3>
+            <span className="ml-auto rounded-full bg-yellow-500 px-2 py-0.5 text-xs font-medium text-yellow-950">
+              {pendingWithdrawals.length}
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {pendingWithdrawals.map((withdrawal) => (
+              <div
+                key={withdrawal._id}
+                className="flex items-center justify-between rounded-lg bg-card p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-500/20 text-yellow-500">
+                    <ArrowUpRight className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-medium">
+                      ${withdrawal.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(withdrawal.createdAt)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="rounded-full bg-yellow-500/20 px-2.5 py-1 text-xs font-medium text-yellow-500">
+                    Aguardando aprovação
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => handleCancelWithdrawal(withdrawal._id)}
+                    disabled={isCancelling}
+                  >
+                    {isCancelling ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <X className="h-4 w-4" />
+                    )}
+                    <span className="ml-1">Cancelar</span>
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -783,13 +882,21 @@ export default function WalletPage() {
                     className={cn(
                       'text-xs font-medium',
                       tx.status === 'completed' && 'text-primary',
+                      tx.status === 'approved' && 'text-primary',
                       tx.status === 'pending' && 'text-yellow-500',
-                      tx.status === 'failed' && 'text-destructive'
+                      tx.status === 'pending_approval' && 'text-yellow-500',
+                      tx.status === 'failed' && 'text-destructive',
+                      tx.status === 'rejected' && 'text-destructive',
+                      tx.status === 'cancelled' && 'text-muted-foreground'
                     )}
                   >
                     {tx.status === 'completed' && 'Concluído'}
+                    {tx.status === 'approved' && 'Aprovado'}
                     {tx.status === 'pending' && 'Pendente'}
+                    {tx.status === 'pending_approval' && 'Aguardando aprovação'}
                     {tx.status === 'failed' && 'Falhou'}
+                    {tx.status === 'rejected' && 'Rejeitado'}
+                    {tx.status === 'cancelled' && 'Cancelado'}
                   </span>
                 </div>
               </div>

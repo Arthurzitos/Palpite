@@ -251,4 +251,13 @@ export class UsersService {
       newUsersThisMonth,
     };
   }
+
+  async searchByEmailOrUsername(search: string): Promise<UserDocument[]> {
+    return this.userModel.find({
+      $or: [
+        { email: { $regex: search, $options: 'i' } },
+        { username: { $regex: search, $options: 'i' } },
+      ],
+    });
+  }
 }
