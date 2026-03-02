@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { BadRequestException } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { NowPaymentsService, NowPaymentsStatus } from './nowpayments.service';
 
 // Mock fetch globally
@@ -94,7 +95,6 @@ describe('NowPaymentsService', () => {
       const body = { b_field: 'value2', a_field: 'value1' };
 
       // Generate expected signature (sorted body)
-      const crypto = require('crypto');
       const sortedBody = { a_field: 'value1', b_field: 'value2' };
       const sortedBodyString = JSON.stringify(sortedBody);
       const expectedSig = crypto

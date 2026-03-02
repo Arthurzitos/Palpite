@@ -23,7 +23,7 @@ interface HistoryItem {
   description: string;
   amount: number;
   date: string;
-  status: 'completed' | 'pending' | 'failed';
+  status: 'pending' | 'pending_approval' | 'approved' | 'rejected' | 'cancelled' | 'completed' | 'failed';
   outcome?: 'won' | 'lost';
 }
 
@@ -272,6 +272,31 @@ export default function HistoryPage() {
                       {item.status === 'pending' && (
                         <span className="ml-2 rounded bg-yellow-500/20 px-1.5 py-0.5 text-yellow-500">
                           Pendente
+                        </span>
+                      )}
+                      {item.status === 'pending_approval' && (
+                        <span className="ml-2 rounded bg-orange-500/20 px-1.5 py-0.5 text-orange-500">
+                          Aguardando Aprovação
+                        </span>
+                      )}
+                      {item.status === 'approved' && (
+                        <span className="ml-2 rounded bg-blue-500/20 px-1.5 py-0.5 text-blue-500">
+                          Aprovado
+                        </span>
+                      )}
+                      {item.status === 'rejected' && (
+                        <span className="ml-2 rounded bg-red-500/20 px-1.5 py-0.5 text-red-500">
+                          Rejeitado
+                        </span>
+                      )}
+                      {item.status === 'cancelled' && (
+                        <span className="ml-2 rounded bg-gray-500/20 px-1.5 py-0.5 text-gray-500">
+                          Cancelado
+                        </span>
+                      )}
+                      {item.status === 'failed' && (
+                        <span className="ml-2 rounded bg-red-500/20 px-1.5 py-0.5 text-red-500">
+                          Falhou
                         </span>
                       )}
                     </p>

@@ -22,6 +22,7 @@ export interface SettlementResult {
   losersCount: number;
   totalPaidOut: number;
   refundedCount: number;
+  totalRefunded: number;
 }
 
 @Injectable()
@@ -70,6 +71,7 @@ export class SettlementService {
         losersCount: 0,
         totalPaidOut: 0,
         refundedCount: 0,
+        totalRefunded: 0,
       };
     }
 
@@ -188,6 +190,7 @@ export class SettlementService {
         losersCount: losingBets.length,
         totalPaidOut: Math.round(totalPaidOut * 100) / 100,
         refundedCount: 0,
+        totalRefunded: 0,
       };
     } catch (error) {
       await session.abortTransaction();
@@ -258,6 +261,7 @@ export class SettlementService {
         losersCount: 0,
         totalPaidOut: 0,
         refundedCount: bets.length,
+        totalRefunded,
       };
     } catch (error) {
       await session.abortTransaction();
@@ -280,6 +284,8 @@ export class SettlementService {
     session.startTransaction();
 
     try {
+      let totalRefunded = 0;
+
       // Refund all bets
       for (const bet of bets) {
         await this.betsService.updateBetStatus(
@@ -309,6 +315,8 @@ export class SettlementService {
           },
           session,
         );
+
+        totalRefunded += bet.amount;
       }
 
       // Cancel event
@@ -326,6 +334,7 @@ export class SettlementService {
         losersCount: 0,
         totalPaidOut: 0,
         refundedCount: bets.length,
+        totalRefunded,
       };
     } catch (error) {
       await session.abortTransaction();
