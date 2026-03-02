@@ -10,7 +10,7 @@ async function seed() {
   const usersService = app.get(UsersService);
 
   try {
-    // Create admin user only
+    // Create or update admin user
     const adminExists = await usersService.findByEmail('admin@prediction.local');
     if (!adminExists) {
       await usersService.create({
@@ -22,7 +22,13 @@ async function seed() {
       });
       console.log('Admin user created: admin@prediction.local / Admin123!');
     } else {
-      console.log('Admin user already exists');
+      // Ensure admin has the correct role
+      if (adminExists.role !== UserRole.ADMIN) {
+        await usersService.updateRole(adminExists._id.toString(), UserRole.ADMIN);
+        console.log('Admin user role updated to ADMIN');
+      } else {
+        console.log('Admin user already exists with correct role');
+      }
     }
 
     console.log('');

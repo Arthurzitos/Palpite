@@ -19,7 +19,10 @@ import {
   Wallet,
   History,
   PieChart,
+  Settings,
 } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
+import { UserRole } from '@prediction-market/shared';
 
 const navigation = [
   { name: 'Mercados', href: '/markets', icon: BarChart3 },
@@ -47,6 +50,8 @@ const userLinks = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user, isAuthenticated } = useAuth();
+  const isAdmin = isAuthenticated && user?.role === UserRole.ADMIN;
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-[var(--sidebar-width)] border-r border-border bg-background hidden lg:block">
@@ -143,6 +148,24 @@ export function Sidebar() {
             );
           })}
         </div>
+
+        {/* Admin Link */}
+        {isAdmin && (
+          <div className="border-t border-border px-3 py-4">
+            <Link
+              href="/admin"
+              className={cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                pathname.startsWith('/admin')
+                  ? 'bg-yellow-500/20 text-yellow-500 border-l-2 border-yellow-500'
+                  : 'text-yellow-500 hover:bg-yellow-500/10'
+              )}
+            >
+              <Settings className="h-5 w-5" />
+              Admin
+            </Link>
+          </div>
+        )}
       </div>
     </aside>
   );
