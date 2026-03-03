@@ -132,10 +132,12 @@ export class WalletService {
 
       await this.transactionsService.updateMetadata(transaction._id.toString(), { invoiceId });
 
-      const widgetConfig = this.nowPaymentsService.getWidgetConfig(
-        amount,
-        transaction._id.toString(),
-      );
+      const widgetConfig = {
+        ...this.nowPaymentsService.getWidgetConfig(amount, transaction._id.toString()),
+        invoice_id: invoiceId,
+        price_amount: amount.toString(),
+        price_currency: 'usd',
+      };
 
       return {
         invoiceUrl,

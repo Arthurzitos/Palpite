@@ -86,12 +86,15 @@ function formatDate(dateString: string): string {
 
 function NowPaymentsWidget({
   config,
+  invoiceUrl,
   onClose,
 }: {
   config: DepositFiatResult['widgetConfig'];
+  invoiceUrl: string;
   onClose: () => void;
 }) {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [widgetInitialized, setWidgetInitialized] = useState(false);
 
   useEffect(() => {
     if (!config) return;
@@ -101,12 +104,19 @@ function NowPaymentsWidget({
     script.src = 'https://nowpayments.io/sdk/nowpayments.js';
     script.async = true;
     script.onload = () => setIsLoaded(true);
+    script.onerror = () => {
+      // If script fails to load, redirect to invoice URL
+      console.error('Failed to load NOWPayments SDK, redirecting to invoice URL');
+      window.location.href = invoiceUrl;
+    };
     document.body.appendChild(script);
 
     return () => {
-      document.body.removeChild(script);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
     };
-  }, [config]);
+  }, [config, invoiceUrl]);
 
   useEffect(() => {
     if (!isLoaded || !config) return;
@@ -115,29 +125,54 @@ function NowPaymentsWidget({
     const initWidget = () => {
       // @ts-expect-error NOWPayments is loaded from external script
       if (window.NOWPaymentsButton) {
-        // @ts-expect-error NOWPayments is loaded from external script
-        window.NOWPaymentsButton.init({
-          api_key: config.api_key,
-          invoice_id: config.invoice_id,
-          order_id: config.order_id,
-          price_amount: config.price_amount,
-          price_currency: config.price_currency,
-          pay_currency: config.pay_currency,
-          container_id: 'nowpayments-widget',
-          onSuccess: () => {
-            onClose();
-            window.location.href = '/wallet?deposit=success';
-          },
-          onError: () => {
-            console.error('NOWPayments error');
-          },
-        });
+        try {
+          // @ts-expect-error NOWPayments is loaded from external script
+          window.NOWPaymentsButton.init({
+            api_key: config.api_key,
+            invoice_id: config.invoice_id,
+            order_id: config.order_id,
+            price_amount: config.price_amount,
+            price_currency: config.price_currency,
+            pay_currency: config.pay_currency,
+            container_id: 'nowpayments-widget',
+            onSuccess: () => {
+              onClose();
+              window.location.href = '/wallet?deposit=success';
+            },
+            onError: () => {
+              console.error('NOWPayments widget error, redirecting to invoice URL');
+              window.location.href = invoiceUrl;
+            },
+          });
+          setWidgetInitialized(true);
+        } catch (error) {
+          console.error('Failed to initialize NOWPayments widget:', error);
+          window.location.href = invoiceUrl;
+        }
+      } else {
+        // SDK loaded but NOWPaymentsButton not available
+        console.error('NOWPaymentsButton not available, redirecting to invoice URL');
+        window.location.href = invoiceUrl;
       }
     };
 
     const timer = setTimeout(initWidget, 500);
     return () => clearTimeout(timer);
-  }, [isLoaded, config, onClose]);
+  }, [isLoaded, config, invoiceUrl, onClose]);
+
+  // Fallback: if widget doesn't initialize in 5 seconds, redirect
+  useEffect(() => {
+    if (!invoiceUrl) return;
+
+    const fallbackTimer = setTimeout(() => {
+      if (!widgetInitialized) {
+        console.log('Widget timeout, redirecting to invoice URL');
+        window.location.href = invoiceUrl;
+      }
+    }, 5000);
+
+    return () => clearTimeout(fallbackTimer);
+  }, [invoiceUrl, widgetInitialized]);
 
   if (!config) return null;
 
@@ -155,10 +190,11 @@ function NowPaymentsWidget({
           id="nowpayments-widget"
           className="min-h-[400px] flex items-center justify-center"
         >
-          {!isLoaded && (
+          {!widgetInitialized && (
             <div className="flex flex-col items-center gap-2">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">Carregando widget de pagamento...</p>
+              <p className="text-xs text-muted-foreground">Redirecionando em alguns segundos...</p>
             </div>
           )}
         </div>
@@ -201,6 +237,7 @@ export default function WalletPage() {
   const [copied, setCopied] = useState(false);
   const [showPixWidget, setShowPixWidget] = useState(false);
   const [pixWidgetConfig, setPixWidgetConfig] = useState<DepositFiatResult['widgetConfig']>();
+  const [pixInvoiceUrl, setPixInvoiceUrl] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -247,6 +284,7 @@ export default function WalletPage() {
 
     try {
       const result = await depositFiat(amountNum);
+      setPixInvoiceUrl(result.invoiceUrl);
       if (result.widgetConfig) {
         setPixWidgetConfig(result.widgetConfig);
         setShowPixWidget(true);
@@ -909,9 +947,11 @@ export default function WalletPage() {
       {showPixWidget && pixWidgetConfig && (
         <NowPaymentsWidget
           config={pixWidgetConfig}
+          invoiceUrl={pixInvoiceUrl}
           onClose={() => {
             setShowPixWidget(false);
             setPixWidgetConfig(undefined);
+            setPixInvoiceUrl('');
             setViewMode('main');
           }}
         />
