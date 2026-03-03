@@ -132,7 +132,26 @@ export class NowPaymentsService {
     if (!response.ok) {
       const errorText = await response.text();
       this.logger.error(`NOWPayments API error: ${response.status} - ${errorText}`);
-      throw new BadRequestException('Payment gateway error');
+
+      // Parse error message from NOWPayments if available
+      let errorMessage = 'Payment gateway error';
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData.message) {
+          errorMessage = `Payment gateway error: ${errorData.message}`;
+        } else if (errorData.error) {
+          errorMessage = `Payment gateway error: ${errorData.error}`;
+        }
+      } catch {
+        // If parsing fails, check for common error patterns
+        if (response.status === 401) {
+          errorMessage = 'Payment gateway: Invalid API credentials';
+        } else if (response.status === 403) {
+          errorMessage = 'Payment gateway: Access denied. Please contact support.';
+        }
+      }
+
+      throw new BadRequestException(errorMessage);
     }
 
     return response.json() as Promise<T>;
@@ -144,19 +163,25 @@ export class NowPaymentsService {
     description: string,
   ): Promise<{ invoiceUrl: string; invoiceId: string }> {
     if (!this.apiKey) {
-      throw new BadRequestException('Fiat payment gateway not configured');
+      this.logger.error('NOWPAYMENTS_API_KEY is not configured');
+      throw new BadRequestException(
+        'Payment gateway not configured. Please contact support.',
+      );
     }
 
-    const body = {
+    const body: Record<string, unknown> = {
       price_amount: amount,
       price_currency: 'usd',
-      pay_currency: this.payoutCurrency,
       ipn_callback_url: this.webhookUrl,
       order_id: orderId,
       order_description: description,
       success_url: `${this.configService.get<string>('frontendUrl')}/wallet?deposit=success`,
       cancel_url: `${this.configService.get<string>('frontendUrl')}/wallet?deposit=cancelled`,
     };
+
+    // Only set pay_currency if configured and valid for invoices
+    // Leaving it undefined allows the user to choose any available currency
+    this.logger.debug(`Creating invoice: amount=${amount}, orderId=${orderId}`);
 
     const response = await this.makeRequest<NowPaymentsInvoiceResponse>('/invoice', 'POST', body);
 
