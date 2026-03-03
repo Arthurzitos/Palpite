@@ -94,6 +94,7 @@ export class NowPaymentsService {
   private readonly payoutCurrency: string;
   private readonly payoutEmail: string;
   private readonly payoutPassword: string;
+  private readonly frontendUrl: string;
   private jwtToken: string | null = null;
   private jwtExpiresAt: number = 0;
 
@@ -106,6 +107,10 @@ export class NowPaymentsService {
       this.configService.get<string>('nowpayments.payoutCurrency') || 'usdttrc20';
     this.payoutEmail = this.configService.get<string>('nowpayments.payoutEmail') || '';
     this.payoutPassword = this.configService.get<string>('nowpayments.payoutPassword') || '';
+    this.frontendUrl =
+      this.configService.get<string>('frontendUrl') || 'https://palpite.me';
+
+    this.logger.log(`NowPayments initialized - frontendUrl: ${this.frontendUrl}`);
   }
 
   private async makeRequest<T>(
@@ -175,8 +180,8 @@ export class NowPaymentsService {
       ipn_callback_url: this.webhookUrl,
       order_id: orderId,
       order_description: description,
-      success_url: `${this.configService.get<string>('frontendUrl')}/wallet?deposit=success`,
-      cancel_url: `${this.configService.get<string>('frontendUrl')}/wallet?deposit=cancelled`,
+      success_url: `${this.frontendUrl}/wallet?deposit=success`,
+      cancel_url: `${this.frontendUrl}/wallet?deposit=cancelled`,
     };
 
     // Only set pay_currency if configured and valid for invoices
@@ -267,8 +272,8 @@ export class NowPaymentsService {
       pay_currency: this.payoutCurrency,
       payout_address: this.payoutAddress,
       ipn_callback_url: this.webhookUrl,
-      success_url: `${this.configService.get<string>('frontendUrl')}/wallet?deposit=success`,
-      cancel_url: `${this.configService.get<string>('frontendUrl')}/wallet?deposit=cancelled`,
+      success_url: `${this.frontendUrl}/wallet?deposit=success`,
+      cancel_url: `${this.frontendUrl}/wallet?deposit=cancelled`,
     };
   }
 
