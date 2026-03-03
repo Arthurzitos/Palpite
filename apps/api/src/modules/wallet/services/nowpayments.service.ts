@@ -107,10 +107,35 @@ export class NowPaymentsService {
       this.configService.get<string>('nowpayments.payoutCurrency') || 'usdttrc20';
     this.payoutEmail = this.configService.get<string>('nowpayments.payoutEmail') || '';
     this.payoutPassword = this.configService.get<string>('nowpayments.payoutPassword') || '';
-    this.frontendUrl =
-      this.configService.get<string>('frontendUrl') || 'https://palpite.me';
 
-    this.logger.log(`NowPayments initialized - frontendUrl: ${this.frontendUrl}`);
+    // Load frontendUrl with multiple fallbacks and validation
+    const configFrontendUrl = this.configService.get<string>('frontendUrl');
+    const envFrontendUrl = process.env.FRONTEND_URL;
+    const rawFrontendUrl = (configFrontendUrl || envFrontendUrl || 'https://palpite.me').trim();
+
+    // Validate URL format
+    if (!this.isValidUrl(rawFrontendUrl)) {
+      this.logger.warn(
+        `Invalid frontendUrl detected: "${rawFrontendUrl}", falling back to https://palpite.me`,
+      );
+      this.frontendUrl = 'https://palpite.me';
+    } else {
+      this.frontendUrl = rawFrontendUrl;
+    }
+
+    this.logger.log(
+      `NowPayments initialized - frontendUrl: ${this.frontendUrl} (config: ${configFrontendUrl}, env: ${envFrontendUrl})`,
+    );
+  }
+
+  private isValidUrl(url: string): boolean {
+    if (!url || url.length === 0) return false;
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
   }
 
   private async makeRequest<T>(
@@ -174,19 +199,30 @@ export class NowPaymentsService {
       );
     }
 
+    const successUrl = `${this.frontendUrl}/wallet?deposit=success`;
+    const cancelUrl = `${this.frontendUrl}/wallet?deposit=cancelled`;
+
+    // Validate URLs before sending to API
+    if (!this.isValidUrl(successUrl)) {
+      this.logger.error(`Invalid success_url: "${successUrl}" (frontendUrl: "${this.frontendUrl}")`);
+      throw new BadRequestException(
+        'Payment gateway configuration error. Please contact support.',
+      );
+    }
+
     const body: Record<string, unknown> = {
       price_amount: amount,
       price_currency: 'usd',
       ipn_callback_url: this.webhookUrl,
       order_id: orderId,
       order_description: description,
-      success_url: `${this.frontendUrl}/wallet?deposit=success`,
-      cancel_url: `${this.frontendUrl}/wallet?deposit=cancelled`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
     };
 
-    // Only set pay_currency if configured and valid for invoices
-    // Leaving it undefined allows the user to choose any available currency
-    this.logger.debug(`Creating invoice: amount=${amount}, orderId=${orderId}`);
+    this.logger.debug(
+      `Creating invoice: amount=${amount}, orderId=${orderId}, success_url=${successUrl}`,
+    );
 
     const response = await this.makeRequest<NowPaymentsInvoiceResponse>('/invoice', 'POST', body);
 
