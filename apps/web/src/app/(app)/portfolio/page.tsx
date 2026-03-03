@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   TrendingUp,
@@ -10,11 +10,14 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/use-auth';
+import { betsApi, Bet, BetStats, Event } from '@/lib/api';
 
-type FilterType = 'all' | 'open' | 'won' | 'lost';
+type FilterType = 'all' | 'active' | 'won' | 'lost';
 
 interface Position {
   id: string;
@@ -33,110 +36,207 @@ interface Position {
   endsIn?: string;
 }
 
-const mockPositions: Position[] = [
-  {
-    id: '1',
-    eventId: '1',
-    eventTitle: 'Lula será reeleito presidente em 2026?',
-    category: 'Política',
-    outcome: 'yes',
-    entryPrice: 55,
-    currentPrice: 67,
-    shares: 100,
-    invested: 55,
-    currentValue: 67,
-    pnl: 12,
-    pnlPercent: 21.8,
-    status: 'open',
-    endsIn: 'Ao Vivo',
-  },
-  {
-    id: '2',
-    eventId: '2',
-    eventTitle: 'Bitcoin ultrapassa $150K antes de Julho 2026?',
-    category: 'Crypto',
-    outcome: 'yes',
-    entryPrice: 38,
-    currentPrice: 42,
-    shares: 200,
-    invested: 76,
-    currentValue: 84,
-    pnl: 8,
-    pnlPercent: 10.5,
-    status: 'open',
-    endsIn: 'Encerra 4m',
-  },
-  {
-    id: '3',
-    eventId: '3',
-    eventTitle: 'Brasil vence a Copa do Mundo 2026?',
-    category: 'Esportes',
-    outcome: 'yes',
-    entryPrice: 28,
-    currentPrice: 32,
-    shares: 150,
-    invested: 42,
-    currentValue: 48,
-    pnl: 6,
-    pnlPercent: 14.3,
-    status: 'open',
-    endsIn: 'Encerra 120d',
-  },
-  {
-    id: '4',
-    eventId: '10',
-    eventTitle: 'Ethereum merge 2.0 até Março 2026?',
-    category: 'Crypto',
-    outcome: 'no',
-    entryPrice: 45,
-    currentPrice: 100,
-    shares: 100,
-    invested: 45,
-    currentValue: 100,
-    pnl: 55,
-    pnlPercent: 122.2,
-    status: 'won',
-  },
-  {
-    id: '5',
-    eventId: '11',
-    eventTitle: 'Trump preso até Dezembro 2025?',
-    category: 'Política',
-    outcome: 'yes',
-    entryPrice: 60,
-    currentPrice: 0,
-    shares: 50,
-    invested: 30,
-    currentValue: 0,
-    pnl: -30,
-    pnlPercent: -100,
-    status: 'lost',
-  },
-];
+const categoryMap: Record<string, string> = {
+  sports: 'Esportes',
+  crypto: 'Crypto',
+  politics: 'Política',
+  entertainment: 'Cultura',
+  other: 'Outros',
+};
+
+function formatTimeRemaining(closesAt: string): string {
+  const now = new Date();
+  const closes = new Date(closesAt);
+  const diff = closes.getTime() - now.getTime();
+
+  if (diff <= 0) return 'Encerrado';
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+  if (days > 0) return `Encerra ${days}d`;
+  if (hours > 0) return `Encerra ${hours}h`;
+  return `Encerra ${minutes}m`;
+}
 
 export default function PortfolioPage() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [filter, setFilter] = useState<FilterType>('all');
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [stats, setStats] = useState<BetStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredPositions = mockPositions.filter((pos) => {
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (!isAuthenticated) {
+      setPositions([]);
+      setStats(null);
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const [betsResponse, statsResponse] = await Promise.all([
+          betsApi.getMyBets({ limit: 100 }),
+          betsApi.getMyStats(),
+        ]);
+
+        const transformedPositions: Position[] = betsResponse.bets.map((bet: Bet) => {
+          const event = bet.eventId as Event;
+          const eventTitle = typeof event === 'object' ? event.title : 'Evento';
+          const eventCategory = typeof event === 'object' ? event.category : 'other';
+          const eventClosesAt = typeof event === 'object' ? event.closesAt : new Date().toISOString();
+          const eventStartsAt = typeof event === 'object' ? event.startsAt : undefined;
+          const eventId = typeof event === 'object' ? event._id : String(event);
+
+          // Determine outcome based on bet outcome
+          const eventOutcomes = typeof event === 'object' ? event.outcomes : [];
+          const betOutcome = eventOutcomes.find(o => o._id === bet.outcomeId);
+          const outcomeLabel = betOutcome?.label?.toLowerCase() || 'sim';
+          const outcome: 'yes' | 'no' = outcomeLabel === 'não' || outcomeLabel === 'nao' ? 'no' : 'yes';
+
+          // Calculate current odds
+          let currentOdds = bet.oddsAtPurchase;
+          if (typeof event === 'object' && event.outcomes?.length >= 2) {
+            const yesOutcome = event.outcomes[0];
+            const noOutcome = event.outcomes[1];
+            const totalOdds = (yesOutcome?.odds || 1) + (noOutcome?.odds || 1);
+            currentOdds = outcome === 'yes'
+              ? Math.round((yesOutcome?.odds || 1) * 100 / totalOdds)
+              : Math.round((noOutcome?.odds || 1) * 100 / totalOdds);
+          }
+
+          // Calculate P&L
+          const entryPrice = Math.round(bet.oddsAtPurchase * 100);
+          const currentPrice = bet.status === 'won' ? 100 : bet.status === 'lost' ? 0 : currentOdds;
+          const shares = Math.round(bet.amount / (bet.oddsAtPurchase || 1));
+          const invested = bet.amount;
+          const currentValue = bet.status === 'won' ? bet.payout : bet.status === 'lost' ? 0 : (currentPrice / 100) * shares;
+          const pnl = currentValue - invested;
+          const pnlPercent = invested > 0 ? (pnl / invested) * 100 : 0;
+
+          // Determine status
+          let status: 'open' | 'won' | 'lost' = 'open';
+          if (bet.status === 'won') status = 'won';
+          else if (bet.status === 'lost') status = 'lost';
+
+          // Determine if live
+          const now = new Date();
+          const startsAt = eventStartsAt ? new Date(eventStartsAt) : null;
+          const closesAt = new Date(eventClosesAt);
+          const isLive = startsAt ? (startsAt <= now && closesAt > now) : false;
+
+          return {
+            id: bet._id,
+            eventId,
+            eventTitle,
+            category: categoryMap[eventCategory] || eventCategory,
+            outcome,
+            entryPrice,
+            currentPrice,
+            shares,
+            invested,
+            currentValue,
+            pnl,
+            pnlPercent,
+            status,
+            endsIn: status === 'open' ? (isLive ? 'Ao Vivo' : formatTimeRemaining(eventClosesAt)) : undefined,
+          };
+        });
+
+        setPositions(transformedPositions);
+        setStats(statsResponse);
+      } catch (err) {
+        console.error('Error fetching portfolio data:', err);
+        setError('Erro ao carregar dados do portfolio');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [isAuthenticated, authLoading]);
+
+  const filteredPositions = positions.filter((pos) => {
     if (filter === 'all') return true;
+    if (filter === 'active') return pos.status === 'open';
     return pos.status === filter;
   });
 
-  const stats = {
-    totalInvested: mockPositions.reduce((sum, p) => sum + p.invested, 0),
-    totalValue: mockPositions.reduce((sum, p) => sum + p.currentValue, 0),
-    totalPnl: mockPositions.reduce((sum, p) => sum + p.pnl, 0),
-    openPositions: mockPositions.filter((p) => p.status === 'open').length,
-    winRate:
-      (mockPositions.filter((p) => p.status === 'won').length /
-        mockPositions.filter((p) => p.status !== 'open').length) *
-        100 || 0,
+  const calculatedStats = {
+    totalInvested: positions.reduce((sum, p) => sum + p.invested, 0),
+    totalValue: positions.reduce((sum, p) => sum + p.currentValue, 0),
+    totalPnl: positions.reduce((sum, p) => sum + p.pnl, 0),
+    openPositions: positions.filter((p) => p.status === 'open').length,
+    winRate: stats?.winRate || 0,
   };
 
   const totalPnlPercent =
-    stats.totalInvested > 0
-      ? ((stats.totalPnl / stats.totalInvested) * 100).toFixed(1)
+    calculatedStats.totalInvested > 0
+      ? ((calculatedStats.totalPnl / calculatedStats.totalInvested) * 100).toFixed(1)
       : '0';
+
+  // Loading state
+  if (authLoading || isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  // Not authenticated state
+  if (!isAuthenticated) {
+    return (
+      <div className="space-y-8">
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/20">
+              <PieChart className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Seu Portfolio</h1>
+              <p className="text-sm text-muted-foreground">
+                Acompanhe suas posições e performance
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Wallet className="h-16 w-16 text-muted-foreground mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Faça login para ver seu portfolio</h2>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              Entre na sua conta para acompanhar suas apostas, ganhos e performance.
+            </p>
+            <div className="flex gap-4">
+              <Link href="/login">
+                <Button>Entrar</Button>
+              </Link>
+              <Link href="/register">
+                <Button variant="outline">Criar Conta</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center text-destructive">
+        {error}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -158,13 +258,13 @@ export default function PortfolioPage() {
           <div className="rounded-lg bg-secondary p-4">
             <p className="text-xs text-muted-foreground">Total Investido</p>
             <p className="text-2xl font-bold">
-              R$ {stats.totalInvested.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ {calculatedStats.totalInvested.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
           <div className="rounded-lg bg-secondary p-4">
             <p className="text-xs text-muted-foreground">Valor Atual</p>
             <p className="text-2xl font-bold">
-              R$ {stats.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ {calculatedStats.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
           <div className="rounded-lg bg-secondary p-4">
@@ -172,17 +272,17 @@ export default function PortfolioPage() {
             <p
               className={cn(
                 'text-2xl font-bold',
-                stats.totalPnl >= 0 ? 'text-primary' : 'text-destructive'
+                calculatedStats.totalPnl >= 0 ? 'text-primary' : 'text-destructive'
               )}
             >
-              {stats.totalPnl >= 0 ? '+' : ''}R${' '}
-              {stats.totalPnl.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} ({totalPnlPercent}%)
+              {calculatedStats.totalPnl >= 0 ? '+' : ''}R${' '}
+              {calculatedStats.totalPnl.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} ({totalPnlPercent}%)
             </p>
           </div>
           <div className="rounded-lg bg-secondary p-4">
             <p className="text-xs text-muted-foreground">Win Rate</p>
             <p className="text-2xl font-bold text-primary">
-              {stats.winRate.toFixed(0)}%
+              {calculatedStats.winRate.toFixed(0)}%
             </p>
           </div>
         </div>
@@ -192,7 +292,7 @@ export default function PortfolioPage() {
       <div className="flex gap-2">
         {[
           { id: 'all', label: 'Todas', icon: BarChart3 },
-          { id: 'open', label: 'Abertas', icon: Clock },
+          { id: 'active', label: 'Abertas', icon: Clock },
           { id: 'won', label: 'Ganhas', icon: CheckCircle2 },
           { id: 'lost', label: 'Perdidas', icon: XCircle },
         ].map((tab) => (
@@ -211,8 +311,15 @@ export default function PortfolioPage() {
       {/* Positions List */}
       <div className="space-y-4">
         {filteredPositions.length === 0 ? (
-          <div className="flex h-40 items-center justify-center rounded-xl border border-border bg-card">
-            <p className="text-muted-foreground">Nenhuma posição encontrada</p>
+          <div className="flex flex-col items-center justify-center h-40 rounded-xl border border-border bg-card">
+            <p className="text-muted-foreground mb-2">Nenhuma posição encontrada</p>
+            {positions.length === 0 && (
+              <Link href="/markets">
+                <Button variant="outline" size="sm">
+                  Explorar Mercados
+                </Button>
+              </Link>
+            )}
           </div>
         ) : (
           filteredPositions.map((position) => (
